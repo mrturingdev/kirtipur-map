@@ -1,0 +1,58 @@
+      <h1 class="map-title">Our Kirtipur</h1>
+      <div class="map-labels" id="mapLabels" aria-hidden="true"></div>
+      <div class="map-pins" id="mapPins" aria-hidden="true"></div>
+      <button type="button" class="legend-toggle" id="btnLegend" aria-expanded="false" aria-controls="legend">Legend</button>
+      <div class="legend" id="legend" aria-hidden="true">
+        <p><i class="legend-pin">1</i>Place</p>
+        <p><i class="legend-sw" style="background:linear-gradient(90deg,#a4cc8e,#f2e2d0)"></i>2 m height bands</p>
+        <p><i class="legend-sw" style="background:#b5603f"></i>Buildings</p>
+        <p><i class="legend-sw" style="background:#968e85"></i>Lanes</p>
+        <p><i class="legend-sw" style="background:#4fa3b8"></i>Water</p>
+      </div>
+      <div class="compass" id="compass" aria-hidden="true" title="North">
+        <svg id="compassNeedle" viewBox="0 0 24 30" width="20" height="25">
+          <path d="M12 1 L18 18 L12 13.5 L6 18 Z" fill="currentColor"></path>
+          <text x="12" y="28" text-anchor="middle" font-size="9" font-weight="700" fill="currentColor">N</text>
+        </svg>
+      </div>
+      <div class="scalebar" aria-hidden="true">
+        <span class="scalebar-track"><i id="scaleFill"></i></span>
+        <b id="scaleLabel">50 m</b>
+      </div>
+      <p class="map-credit">1 unit = 4 m · colour bands every 2 m · ground SRTM 30 m · building heights GHSL (c) EU + Mapillary (CC BY-SA) · map data © OpenStreetMap contributors</p>
+      <div class="map-toolbar" role="group" aria-label="Map controls">
+        <button type="button" class="btn" id="btnHome">Whole island</button>
+        <div class="seg" id="segPlaces" role="group" aria-label="Places">
+          <button type="button" data-v="uma" aria-pressed="false" aria-label="Uma Maheshwar"><b>1</b><span class="place-name"> Uma</span></button>
+          <button type="button" data-v="lyaku" aria-pressed="false" aria-label="Lyaku Museum"><b>2</b><span class="place-name"> Lyaku</span></button>
+          <button type="button" data-v="bhairab" aria-pressed="false" aria-label="Bagh Bhairab"><b>3</b><span class="place-name"> Bhairab</span></button>
+          <button type="button" data-v="pukhu" aria-pressed="false" aria-label="Dey Pukhu"><b>4</b><span class="place-name"> Pukhu</span></button>
+          <button type="button" data-v="lohan" aria-pressed="false" aria-label="Lohan Dega"><b>5</b><span class="place-name"> Lohan</span></button>
+          <button type="button" data-v="stupa" aria-pressed="false" aria-label="Chilancho"><b>6</b><span class="place-name"> Chilancho</span></button>
+        </div>
+        <button type="button" class="btn" id="btnZoomIn" aria-label="Zoom in">+</button>
+        <button type="button" class="btn" id="btnZoomOut" aria-label="Zoom out">&minus;</button>
+        <button type="button" class="btn" id="btnTurnL" aria-label="Turn left">&#9664;</button>
+        <button type="button" class="btn" id="btnTurnR" aria-label="Turn right">&#9654;</button>
+        <button type="button" class="btn" id="btnMeasure" aria-pressed="false">Measure</button>
+        <button type="button" class="btn" id="btnLabels" aria-pressed="true">Labels</button>
+        <button type="button" class="btn" id="btnThemeUI">Dark theme</button>
+        <div class="time-ctl" role="group" aria-label="Time in Kirtipur" title="Time in Kirtipur (Nepal time); slide to see dusk and night">
+          <output id="clockNow" for="timeSlider">--:--</output>
+          <input type="range" id="timeSlider" min="0" max="1439" step="5" aria-label="Time of day in Kirtipur">
+          <button type="button" class="btn" id="btnNow" aria-pressed="true">Now</button>
+        </div>
+      </div>
+      <aside class="panel" id="panel" tabindex="-1" role="dialog" aria-modal="false" aria-labelledby="panelName" hidden>
+        <div class="panel-head">
+          <button type="button" class="panel-nav" id="panelPrev" aria-label="Previous place">&larr;</button>
+          <h2 id="panelName"></h2>
+          <button type="button" class="panel-nav" id="panelNext" aria-label="Next place">&rarr;</button>
+          <button type="button" class="panel-close" id="panelClose" aria-label="Close place panel">&times;</button>
+        </div>
+        <div class="panel-body">
+          <p class="panel-history" id="panelHistory"></p>
+          <p class="panel-look" id="panelLook"></p>
+          <div class="panel-photos" id="panelPhotos"></div>
+        </div>
+      </aside>

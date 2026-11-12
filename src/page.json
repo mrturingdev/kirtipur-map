@@ -1,0 +1,42 @@
+{
+  "title": "Our Kirtipur",
+  "description": "Our Kirtipur: a true-scale 3D map of old Kirtipur near Kathmandu, with six iconic places to pick for their history and photos. Every building from OpenStreetMap at a height from GHSL satellite data, the hill from SRTM heights as a smooth surface tinted in 2 m height bands, people walking the real lanes.",
+  "kicker": "Floating map diorama · Kirtipur, Kathmandu valley · 1 unit = 4 m",
+  "intro": "The old town at true scale, around six places: Uma Maheshwar, Lyaku Museum, Bagh Bhairab, Dey Pukhu, Lohan Dega and Chilancho.",
+  "canvasLabel": "Isometric 3D map of Kirtipur old town: smooth hill tinted in 2 m height bands, extruded buildings from OpenStreetMap, temples, ponds and lanes, with map labels, floating on a rock island in the sky. Drag to turn, scroll to zoom, click the ground for its height or to measure.",
+  "rulesLabel": "Map",
+  "bars": [
+    [
+      "Light",
+      "Light"
+    ],
+    [
+      "Breeze",
+      "Breeze"
+    ],
+    [
+      "Bustle",
+      "Bustle"
+    ]
+  ],
+  "scripts": [
+    "mapdata.js",
+    "places.js",
+    "terrain.js",
+    "roads.js",
+    "city.js",
+    "houses.js",
+    "bhairab.js",
+    "uma.js",
+    "lyaku.js",
+    "chilancho.js",
+    "pukhu.js",
+    "lohan.js",
+    "detail.js",
+    "lamps.js",
+    "life.js",
+    "walk.js",
+    "panel.js",
+    "hud.js"
+  ]
+}

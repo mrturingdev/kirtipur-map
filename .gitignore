@@ -1,0 +1,8 @@
+# Mapillary client token and its download cache (tools/mapillary.py)
+tools/.mapillary_token
+tools/.mapillary_cache/
+# Raw reference photos (large, third-party licensed); web-ready images the site ships live elsewhere
+ref/
+# Ruflo / claude-flow runtime state
+.claude-flow/
+.swarm/
