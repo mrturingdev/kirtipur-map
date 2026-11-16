@@ -1,37 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>./</loc>
+    <loc>https://kirtipur.mrturingdev.com/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>./#place=uma</loc>
+    <loc>https://kirtipur.mrturingdev.com/#place=uma</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>./#place=lyaku</loc>
+    <loc>https://kirtipur.mrturingdev.com/#place=lyaku</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>./#place=bhairab</loc>
+    <loc>https://kirtipur.mrturingdev.com/#place=bhairab</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>./#place=pukhu</loc>
+    <loc>https://kirtipur.mrturingdev.com/#place=pukhu</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>./#place=lohan</loc>
+    <loc>https://kirtipur.mrturingdev.com/#place=lohan</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>./#place=stupa</loc>
+    <loc>https://kirtipur.mrturingdev.com/#place=stupa</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
