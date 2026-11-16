@@ -1,0 +1,123 @@
+# ----------------------------------------------------------------------
+# Apache / LiteSpeed Configuration for Our Kirtipur 3D Map (cPanel)
+# ----------------------------------------------------------------------
+
+# Default index file
+DirectoryIndex index.html
+
+# Prevent directory indexing/browsing
+Options -Indexes
+
+# Follow symbolic links (standard on cPanel)
+Options +FollowSymLinks
+
+# Prevent viewing hidden files, repo metadata, and server config
+RedirectMatch 404 /\.(git|github|cpanel\.yml|claude|swarm|gitignore)
+RedirectMatch 404 /(tools|tests|ref|src|\.claude-flow|\.swarm)/
+RedirectMatch 404 \.(md|json|py|sh)$
+
+# Custom 404 error page
+ErrorDocument 404 /404.html
+
+# ----------------------------------------------------------------------
+# HTTPS Redirect (Forces secure connection)
+# ----------------------------------------------------------------------
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Redirect HTTP to HTTPS
+  RewriteCond %{HTTPS} off
+  RewriteCond %{HTTP:X-Forwarded-Proto} !https
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
+
+# ----------------------------------------------------------------------
+# Gzip / Deflate Compression (mod_deflate)
+# Dramatically compresses index.html (~400KB down to ~75KB)
+# ----------------------------------------------------------------------
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html
+  AddOutputFilterByType DEFLATE text/css
+  AddOutputFilterByType DEFLATE text/plain
+  AddOutputFilterByType DEFLATE text/xml
+  AddOutputFilterByType DEFLATE application/javascript
+  AddOutputFilterByType DEFLATE application/x-javascript
+  AddOutputFilterByType DEFLATE application/json
+  AddOutputFilterByType DEFLATE application/xml
+  AddOutputFilterByType DEFLATE application/xhtml+xml
+  AddOutputFilterByType DEFLATE image/svg+xml
+  AddOutputFilterByType DEFLATE image/x-icon
+  AddOutputFilterByType DEFLATE font/ttf
+  AddOutputFilterByType DEFLATE font/otf
+  AddOutputFilterByType DEFLATE font/woff
+  AddOutputFilterByType DEFLATE font/woff2
+</IfModule>
+
+# Brotli compression (when supported on LiteSpeed / Apache 2.4+)
+<IfModule mod_brotli.c>
+  AddOutputFilterByType BROTLI_COMPRESS text/html text/plain text/xml text/css
+  AddOutputFilterByType BROTLI_COMPRESS application/javascript application/json application/xml
+  AddOutputFilterByType BROTLI_COMPRESS image/svg+xml image/x-icon font/woff font/woff2
+</IfModule>
+
+# ----------------------------------------------------------------------
+# Browser Caching & Expiration (mod_expires & mod_headers)
+# ----------------------------------------------------------------------
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresDefault "access plus 1 month"
+
+  # HTML: do not cache aggressively so new updates are seen immediately
+  ExpiresByType text/html "access plus 0 seconds"
+
+  # Images and Icons
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/jpg "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/webp "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+  ExpiresByType image/x-icon "access plus 1 year"
+
+  # Fonts
+  ExpiresByType font/woff "access plus 1 year"
+  ExpiresByType font/woff2 "access plus 1 year"
+  ExpiresByType font/ttf "access plus 1 year"
+  ExpiresByType font/otf "access plus 1 year"
+
+  # CSS & JS
+  ExpiresByType text/css "access plus 1 month"
+  ExpiresByType application/javascript "access plus 1 month"
+</IfModule>
+
+<IfModule mod_headers.c>
+  # HTML cache control (must revalidate so updates are immediate)
+  <FilesMatch "\.(html|htm)$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires 0
+  </FilesMatch>
+
+  # Images cache control (long cache)
+  <FilesMatch "\.(ico|jpe?g|png|webp|svg)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+
+  # Security headers
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "SAMEORIGIN"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+  Header set Permissions-Policy "geolocation=(), camera=(), microphone=()"
+
+  # Content Security Policy (allows Three.js CDN, Google Fonts, inline scripts/styles, blob/data)
+  Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://commons.wikimedia.org; connect-src 'self' https://cdn.jsdelivr.net https://fonts.googleapis.com; worker-src 'self' blob:; frame-ancestors 'self';"
+</IfModule>
+
+# Correct MIME types
+<IfModule mod_mime.c>
+  AddType image/x-icon .ico
+  AddType image/svg+xml .svg
+  AddType application/javascript .js .mjs
+  AddType font/woff .woff
+  AddType font/woff2 .woff2
+</IfModule>

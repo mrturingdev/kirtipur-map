@@ -6,3 +6,9 @@ ref/
 # Ruflo / claude-flow runtime state
 .claude-flow/
 .swarm/
+# Build and packaging output
+dist/
+*.zip
+node_modules/
+.DS_Store
+

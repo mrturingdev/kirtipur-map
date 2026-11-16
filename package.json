@@ -1,0 +1,20 @@
+{
+  "name": "kirtipur-map",
+  "version": "1.0.0",
+  "description": "Our Kirtipur - 3D Map Diorama of Kirtipur Old Town",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node ../_engine/scripts/build.mjs .",
+    "test": "node tests/site-check.mjs",
+    "pack:cpanel": "node tools/package_cpanel.mjs",
+    "export": "node tools/package_cpanel.mjs"
+  },
+  "keywords": [
+    "kirtipur",
+    "threejs",
+    "diorama",
+    "3d-map",
+    "cpanel"
+  ]
+}

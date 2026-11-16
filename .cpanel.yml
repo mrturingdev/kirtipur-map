@@ -1,0 +1,17 @@
+---
+deployment:
+  tasks:
+    # Ensure correct repository and file permissions in cPanel
+    - /bin/chmod 755 "$HOME/repositories" "$HOME/repositories/kirtipur-map" 2>/dev/null || true
+    - /bin/chmod -R a+rX "$HOME/repositories/kirtipur-map" 2>/dev/null || true
+    # Target deployment directory in cPanel
+    # Default is $HOME/public_html/
+    # If deploying to a subdomain (e.g. kirtipur.mrturingdev.com) or subfolder, update DEPLOYPATH below:
+    # export DEPLOYPATH=$HOME/kirtipur.mrturingdev.com/
+    # export DEPLOYPATH=$HOME/public_html/kirtipur/
+    - export DEPLOYPATH=${DEPLOYPATH:-$HOME/public_html/}
+    - /bin/mkdir -p "$DEPLOYPATH"
+    # Copy web production assets
+    - /bin/cp -Rf index.html favicon.ico 404.html robots.txt sitemap.xml .htaccess "$DEPLOYPATH"
+    - /bin/mkdir -p "$DEPLOYPATH/img"
+    - /bin/cp -Rf img/* "$DEPLOYPATH/img/"

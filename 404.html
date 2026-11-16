@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>404 - Page Not Found · Our Kirtipur</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f6efe6;
+  --card: #ffffff;
+  --rule: #e0d0bd;
+  --ink: #2b211b;
+  --muted: #6f5d50;
+  --accent: #d0603a;
+  --accent-ink: #ffffff;
+  --f-pixel: "Silkscreen", "Courier New", monospace;
+  --f-body: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #161316;
+    --card: #252027;
+    --rule: #3a323d;
+    --ink: #f5ebe1;
+    --muted: #ab9c92;
+    --accent: #f28b50;
+    --accent-ink: #1a110b;
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--f-body);
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  text-align: center;
+}
+.box {
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 2.5rem 2rem;
+  max-width: 480px;
+  width: 100%;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+}
+.code {
+  font-family: var(--f-pixel);
+  font-size: 3.5rem;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.05em;
+}
+h1 {
+  font-family: var(--f-pixel);
+  font-size: 1.25rem;
+  margin-bottom: 0.75rem;
+  color: var(--ink);
+}
+p {
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin-bottom: 1.75rem;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--f-body);
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+.btn:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+.hint {
+  margin-top: 1.5rem;
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="code">404</div>
+  <h1>Lost in the lanes</h1>
+  <p>The lane or shrine you were looking for doesn't exist on this ridge. Return to the 3D map to explore old Kirtipur.</p>
+  <a href="./" class="btn">Explore Our Kirtipur</a>
+  <div class="hint">Our Kirtipur 3D Diorama</div>
+</div>
+</body>
+</html>
