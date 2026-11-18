@@ -5,6 +5,4 @@ deployment:
     - /bin/chmod -R a+rX "$HOME/repositories/kirtipur-map" 2>/dev/null || true
     - export DEPLOYPATH=$HOME/kirtipur.mrturingdev.com/
     - /bin/mkdir -p "$DEPLOYPATH"
-    - /bin/cp -Rf index.html favicon.ico 404.html robots.txt sitemap.xml .htaccess "$DEPLOYPATH"
-    - /bin/mkdir -p "$DEPLOYPATH/img"
-    - /bin/cp -Rf img/* "$DEPLOYPATH/img/"
+    - /bin/cp -Rf index.html favicon.ico 404.html robots.txt sitemap.xml .htaccess img "$DEPLOYPATH"

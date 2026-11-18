@@ -1,84 +1,55 @@
-# Hosting Our Kirtipur on cPanel
+# Hosting Our Kirtipur on cPanel (Bloxrunner Setup)
 
-This repository is configured for static web hosting on any **cPanel** server running Apache or LiteSpeed. No Node.js runtime or backend server is needed on the cPanel host—everything runs client-side using WebGL and Three.js.
-
----
-
-## What's Included
-
-- **`.cpanel.yml`**: Native deployment recipe for cPanel Git™ Version Control.
-- **`.htaccess`**: Optimized server configuration:
-  - **Gzip & Brotli compression**: Shrinks `index.html` from ~400 KB down to ~120 KB (~70% reduction) for ultra-fast initial loads.
-  - **Browser Caching**: 1-year immutable caching for photos and icons; instant cache invalidation for HTML updates.
-  - **Security Headers**: HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Content-Security-Policy (CSP) tailored for Three.js CDN & Google Fonts.
-  - **HTTPS Redirection**: Automatic redirect from HTTP to HTTPS.
-  - **Sensitive File Protection**: Blocks web access to `.git`, `.cpanel.yml`, `tools/`, `src/`, `tests/`, and markdown/script files.
-- **`robots.txt` & `sitemap.xml`**: Pre-configured search engine crawling and place deep links.
-- **`404.html`**: Themed 404 page matching the diorama's warm palette and pixel typography.
-- **`tools/package_cpanel.mjs`**: Local packaging script to generate a clean `dist/` folder and `kirtipur-map-cpanel.zip`.
+This project uses the exact same automated deployment architecture as **bloxrunner**: a GitHub Actions workflow that talks to the cPanel UAPI over HTTPS (Port 2083) to automatically clone, update, and deploy via `.cpanel.yml` without needing SSH keys.
 
 ---
 
-## Deployment Methods
+## Why cPanel API over HTTPS?
 
-### Method 1: Automated Deployment via cPanel Git™ Version Control (Recommended)
+On this hosting environment, **inbound SSH from CI is blocked** (TCP 22 opens without an SSH banner), and cPanel's web UI often fails when trying to enter clone credentials manually.
 
-1. **Log in to cPanel** and navigate to **Git™ Version Control** (under *Files*).
-2. Click **Create** to set up a new repository:
-   - **Clone URL**: Your GitHub / Git repository URL.
-   - **Repository Path**: `repositories/kirtipur-map` (inside your cPanel `$HOME`).
-   - **Repository Name**: `kirtipur-map`.
-3. Click **Create**.
-4. By default, `.cpanel.yml` deploys files to `$HOME/public_html/`.
-   - If deploying to a **subdomain** (e.g., `kirtipur.yourdomain.com` mapped to `$HOME/kirtipur.yourdomain.com/`) or a subfolder (e.g., `$HOME/public_html/kirtipur/`), edit `.cpanel.yml`:
-     ```yaml
-     export DEPLOYPATH=$HOME/kirtipur.yourdomain.com/
-     ```
-5. Click **Manage** next to the repository in cPanel, go to the **Deploy** tab, and click **Deploy HEAD Commit**.
-6. Every time you push a commit or pull changes in cPanel, clicking **Deploy HEAD Commit** automatically refreshes the live site!
+By using `.github/workflows/deploy.yml`:
+1. GitHub Actions connects securely to cPanel's REST API over HTTPS (`https://mrturingdev.com:2083/execute`).
+2. If the repository doesn't exist yet in cPanel, the workflow instructs cPanel to clone `https://github.com/mrturingdev/kirtipur-map.git` directly on the server.
+3. Every push to `main` pulls the latest commits (`VersionControl/update`) and runs `.cpanel.yml` (`VersionControlDeployment/create`) to copy files to `$HOME/kirtipur.mrturingdev.com/`.
 
 ---
 
-### Method 2: Manual Upload via cPanel File Manager (Zip Archive)
+## 1. Required Repository Secrets
 
-1. On your local machine, run the packaging script:
-   ```bash
-   npm run pack:cpanel
-   ```
-   *(or `node tools/package_cpanel.mjs`)*
-   This generates `kirtipur-map-cpanel.zip` (~2.6 MB).
-2. Open **cPanel > File Manager**.
-3. Navigate to your target directory (e.g., `public_html` or your subdomain's document root).
-4. Click **Upload** and select `kirtipur-map-cpanel.zip`.
-5. Once uploaded, right-click `kirtipur-map-cpanel.zip` in File Manager and select **Extract**.
-6. Delete the `.zip` file from the server. Your site is live!
+Add the same cPanel secrets used in `bloxrunner` to `mrturingdev/kirtipur-map` (via GitHub: **Settings** &rarr; **Secrets and variables** &rarr; **Actions** &rarr; **New repository secret**):
+
+| Secret | Value | Description |
+|---|---|---|
+| `CPANEL_HOST` | `mrturingdev.com` *(or server hostname)* | cPanel domain or server address |
+| `CPANEL_USER` | *your cPanel username* | Your cPanel login username |
+| `CPANEL_TOKEN` | *your API token* | Generated in cPanel &rarr; Security &rarr; **Manage API Tokens** |
+| `CPANEL_REPO` | `/home/<user>/repositories/kirtipur-map` | Repository path on cPanel |
+| `CPANEL_PORT` | `2083` *(optional, defaults to 2083)* | cPanel SSL Port |
 
 ---
 
-### Method 3: FTP / SFTP
+## 2. Target Path in `.cpanel.yml`
 
-1. Run:
-   ```bash
-   npm run pack:cpanel
-   ```
-2. Connect to your cPanel hosting using FileZilla, Cyberduck, or your preferred FTP/SFTP client.
-3. Upload all files and folders inside the generated `dist/` directory directly into `public_html/` (or your subdomain directory).
+The deployment recipe [`.cpanel.yml`](.cpanel.yml) is configured to deploy directly to your subdomain:
+
+```yaml
+---
+deployment:
+  tasks:
+    - /bin/chmod 755 "$HOME/repositories" "$HOME/repositories/kirtipur-map" 2>/dev/null || true
+    - /bin/chmod -R a+rX "$HOME/repositories/kirtipur-map" 2>/dev/null || true
+    - export DEPLOYPATH=$HOME/kirtipur.mrturingdev.com/
+    - /bin/mkdir -p "$DEPLOYPATH"
+    - /bin/cp -Rf index.html favicon.ico 404.html robots.txt sitemap.xml .htaccess img "$DEPLOYPATH"
+```
 
 ---
 
-## SSL / HTTPS Setup
+## 3. How to Trigger Deployment
 
-1. In cPanel, navigate to **SSL/TLS Status**.
-2. Select your domain or subdomain and click **Run AutoSSL** to obtain a free Let's Encrypt / cPanel SSL certificate.
-3. The `.htaccess` file will automatically redirect all unencrypted HTTP traffic to HTTPS.
+Once the 3 main secrets (`CPANEL_HOST`, `CPANEL_USER`, `CPANEL_TOKEN`) are added to GitHub:
+- **Automatic**: Every `git push` to `main` deploys automatically.
+- **Manual**: Go to GitHub &rarr; **Actions** &rarr; **Deploy to cPanel** &rarr; **Run workflow**.
 
----
-
-## Verifying the Deployment
-
-1. Open `https://yourdomain.com/` in your browser.
-2. Confirm the 3D map loads and navigation works (keys 1–6, pan/zoom, place details panel).
-3. Open browser DevTools (**Network tab**):
-   - Check `index.html`: verify `content-encoding: gzip` (or `br`) is active.
-   - Check images: verify `cache-control: public, max-age=...` is returned.
-4. Test a non-existent URL (e.g. `https://yourdomain.com/non-existent`) to confirm the themed `404.html` appears.
+The workflow output will stream the deployment status and server logs directly into GitHub Actions.

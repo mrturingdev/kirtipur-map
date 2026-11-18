@@ -1,0 +1,101 @@
+name: Deploy to cPanel
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CPANEL_HOST: ${{ secrets.CPANEL_HOST }}
+      CPANEL_PORT: ${{ secrets.CPANEL_PORT || '2083' }}
+      CPANEL_USER: ${{ secrets.CPANEL_USER }}
+      CPANEL_TOKEN: ${{ secrets.CPANEL_TOKEN }}
+      CPANEL_REPO: ${{ secrets.CPANEL_REPO }}
+      REPO_URL: https://github.com/${{ github.repository }}.git
+    steps:
+      - name: Check configuration
+        run: |
+          missing=""
+          for v in CPANEL_HOST CPANEL_USER CPANEL_TOKEN; do
+            [ -n "${!v}" ] || missing="$missing $v"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing"
+            exit 1
+          fi
+
+      - name: Sync and deploy on cPanel
+        run: |
+          base="https://$CPANEL_HOST:$CPANEL_PORT/execute"
+          auth="Authorization: cpanel $CPANEL_USER:$CPANEL_TOKEN"
+
+          # 1. Discover domain documentroot and existing git repositories on cPanel
+          domains=$(curl -sS --max-time 60 -H "$auth" "$base/DomainInfo/domains_data")
+          docroot=$(printf '%s' "$domains" | jq -r '
+            [ .data.main_domain, (.data.sub_domains // [])[], (.data.addon_domains // [])[] ]
+            | map(select(. != null and (.domain | ascii_downcase | contains("kirtipur"))))
+            | .[0].documentroot // empty
+          ')
+
+          repos=$(curl -sS --max-time 60 -H "$auth" "$base/VersionControl/retrieve")
+          repo_root=$(printf '%s' "$repos" | jq -r --arg cfg "$CPANEL_REPO" --arg doc "$docroot" '
+            (.data // [])
+            | (map(select(.repository_root == $cfg or .repository_root == ("/" + $cfg)))
+              + map(select($doc != "" and .repository_root == $doc))
+              + map(select((.repository_root | ascii_downcase | contains("kirtipur")) or (.name // "" | ascii_downcase | contains("kirtipur")))))
+            | .[0].repository_root // empty
+          ')
+
+          # 2. If no repo exists yet in cPanel Git Version Control, create/clone it
+          if [ -z "$repo_root" ]; then
+            target="/home/$CPANEL_USER/repositories/kirtipur-map"
+            src=$(jq -nc --arg url "$REPO_URL" '{"remote_name":"origin","url":$url}')
+            create_resp=$(curl -sS --max-time 180 -G -H "$auth" "$base/VersionControl/create" \
+              --data-urlencode "type=git" \
+              --data-urlencode "name=kirtipur-map" \
+              --data-urlencode "repository_root=$target" \
+              --data-urlencode "branch=main" \
+              --data-urlencode "source_repository=$src")
+            printf '%s\n' "$create_resp" | jq -c '{status, errors}'
+            if [ "$(printf '%s' "$create_resp" | jq -r '.status')" != "1" ]; then
+              echo "::error::Failed to find or create cPanel Git repository"
+              exit 1
+            fi
+            repo_root="$target"
+          fi
+
+          # 3. Pull latest commits from origin/main
+          upd_resp=$(curl -sS --max-time 180 -G -H "$auth" "$base/VersionControl/update" \
+            --data-urlencode "repository_root=$repo_root" \
+            --data-urlencode "branch=main")
+          printf '%s\n' "$upd_resp" | jq -c '{status, errors, branch: .data.branch, last_update: .data.last_update}'
+          if [ "$(printf '%s' "$upd_resp" | jq -r '.status')" != "1" ]; then
+            echo "::error::VersionControl/update failed"
+            exit 1
+          fi
+
+          # 4. Run .cpanel.yml deployment tasks
+          dep_resp=$(curl -sS --max-time 180 -G -H "$auth" "$base/VersionControlDeployment/create" \
+            --data-urlencode "repository_root=$repo_root")
+          printf '%s\n' "$dep_resp" | jq -c '{status, errors, deploy_id: .data.deploy_id, log_path: .data.log_path}'
+          if [ "$(printf '%s' "$dep_resp" | jq -r '.status')" != "1" ]; then
+            echo "::error::VersionControlDeployment/create failed"
+            exit 1
+          fi
+
+          log_path=$(printf '%s' "$dep_resp" | jq -r '.data.log_path // empty')
+          if [ -n "$log_path" ]; then
+            sleep 3
+            log_dir=$(dirname "$log_path")
+            log_file=$(basename "$log_path")
+            curl -sS --max-time 30 -G -H "$auth" "$base/Fileman/get_file_content" \
+              --data-urlencode "dir=$log_dir" \
+              --data-urlencode "file=$log_file" | jq -r '.data.content // empty'
+          fi
