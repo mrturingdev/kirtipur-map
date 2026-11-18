@@ -23,15 +23,26 @@ html, body { overflow: hidden; }
 .map-labels .lbl.water { color: #1f5f7a; }
 .map-labels .lbl.measure { font: 600 12px/1.2 ui-monospace, monospace; font-style: normal; color: #fffaf2; background: #73281b; padding: 2px 6px; text-shadow: none; }
 :root[data-theme="dark"] .map-labels .lbl:not(.measure), .map-labels.night .lbl:not(.measure) { color: #f2e2d0; text-shadow: 0 0 3px #110e12; }
-/* The credit line sits bottom-left, above the toolbar strip that now runs along the bottom edge */
-.map-credit { position: absolute; left: 8px; bottom: 46px; max-width: calc(70% - 16px); margin: 0; padding: 3px 7px; border-radius: 4px; font: 10px/1.35 ui-monospace, monospace; color: #f3e6d8; background: rgba(23, 19, 15, 0.72); pointer-events: none; z-index: 1; }
+/* The credit / metric line is hidden as requested */
+.map-credit { display: none !important; }
+/* Instagram link in bottom-right corner */
+.insta-badge {
+  position: absolute; right: 8px; bottom: 46px; z-index: 3;
+  display: flex; align-items: center; gap: 6px; padding: 4px 9px;
+  border-radius: 6px; font: 600 11px/1.2 var(--f-mono);
+  color: var(--ink); background: var(--card); border: 1px solid var(--rule);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.25); text-decoration: none; pointer-events: auto;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.insta-badge:hover, .insta-badge:focus-visible { color: #fff; background: #c13584; border-color: #c13584; outline: none; }
+.insta-badge svg { flex: none; }
 @media (max-width: 600px) {
   /* The engine shell's own mobile rule (`.stage { height: 58vh }`, for its usual stacked
      header/scoreboard/stage/feed layout) otherwise confines the full-viewport map - and
      everything positioned inside #stage, including this map's own UI - to the screen's top
      58%; same selector specificity, so this later rule wins. */
   .stage { height: 100vh; height: 100dvh; min-height: 0; }
-  .map-credit { max-width: calc(100% - 16px); bottom: 96px; }
+  .insta-badge { bottom: 96px; right: 8px; font-size: 10px; padding: 3px 7px; }
   .map-labels .lbl.major { font-size: 12px; } .map-labels .lbl.minor { font-size: 9px; }
 }
 /* Map furniture: numbered pins on the six places, a north arrow, a scale bar in true metres
@@ -82,7 +93,9 @@ html, body { overflow: hidden; }
   border-left: 1px solid var(--rule); box-shadow: -4px 0 16px rgba(0, 0, 0, 0.25); }
 .panel[hidden] { display: none; }
 .panel-head { display: flex; align-items: center; gap: 6px; padding: 10px 8px; border-bottom: 1px solid var(--rule); flex: none; }
-.panel-head h2 { flex: 1; margin: 0; font: 700 15px/1.2 var(--f-pixel); letter-spacing: 0.01em; text-align: center; }
+.panel-title-wrap { flex: 1; text-align: center; }
+.panel-badge { display: block; font: 600 9px/1 var(--f-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); margin-bottom: 2px; }
+.panel-head h2 { margin: 0; font: 700 15px/1.2 var(--f-pixel); letter-spacing: 0.01em; }
 .panel-nav, .panel-close { border: 1px solid var(--rule); background: var(--card-2); color: var(--ink); border-radius: 5px; width: 30px; height: 30px; font: 600 15px/1 var(--f-mono); cursor: pointer; }
 .panel-nav:hover, .panel-close:hover { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .panel-nav:focus-visible, .panel-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

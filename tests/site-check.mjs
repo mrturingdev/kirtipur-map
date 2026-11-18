@@ -69,17 +69,31 @@ async function chromeHidden(pg) {
 }
 
 async function wholeIsland(pg, label) {
-  await pg.waitForTimeout(1200);
+  await pg.click('#btnHome');
+  await pg.waitForTimeout(1000);
   const s = await scroll(pg);
   if (s.sw > s.w || s.sh > s.h + 1) fail(`${label}: page scrolls (${s.sw}x${s.sh} in ${s.w}x${s.h})`);
   if (!(await chromeHidden(pg))) fail(`${label}: engine chrome is visible`);
   const title = await pg.evaluate(() => ({ doc: document.title, onMap: document.querySelector('.map-title')?.textContent.trim() }));
   if (title.doc !== 'Our Kirtipur') fail(`${label}: document title is "${title.doc}", not "Our Kirtipur"`);
   if (title.onMap !== 'Our Kirtipur') fail(`${label}: on-map title is "${title.onMap}", not "Our Kirtipur"`);
-  const credit = await pg.evaluate(() => document.querySelector('.map-credit')?.textContent || '');
-  for (const must of ['OpenStreetMap', 'SRTM', 'GHSL', 'Mapillary']) if (!credit.includes(must)) fail(`${label}: data credit is missing "${must}"`);
-  const creditVisible = await pg.evaluate(() => { const el = document.querySelector('.map-credit'); if (!el) return false; const r = el.getBoundingClientRect(); return r.width * r.height > 0 && getComputedStyle(el).opacity !== '0'; });
-  if (!creditVisible) fail(`${label}: data credit line is not visible`);
+  const creditHidden = await pg.evaluate(() => {
+    const el = document.querySelector('.map-credit');
+    if (!el) return true;
+    return getComputedStyle(el).display === 'none' || getComputedStyle(el).visibility === 'hidden' || getComputedStyle(el).opacity === '0';
+  });
+  if (!creditHidden) fail(`${label}: metric detail section should be hidden`);
+  const insta = await pg.evaluate(() => {
+    const el = document.getElementById('instaLink');
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return {
+      href: el.href,
+      visible: r.width * r.height > 0 && getComputedStyle(el).display !== 'none'
+    };
+  });
+  if (!insta || !insta.visible) fail(`${label}: instagram link is not visible`);
+  if (!insta.href.includes('instagram.com/mrturingdev.diorama')) fail(`${label}: instagram link href is ${insta?.href}`);
   // Host review: the map must fill the whole viewport (the engine shell's own mobile rule used
   // to cap #stage - and the canvas inside it - at 58vh) and, in dark theme, the backdrop behind
   // the island must be a single flat colour, not the post pass's two-colour dither checkerboard.
@@ -197,7 +211,7 @@ const furniture = await desktop.evaluate(() => ({
   scaleWidth: parseFloat(document.getElementById('scaleFill')?.style.width || '0'),
   scaleLabel: document.getElementById('scaleLabel')?.textContent || '',
   legendRows: document.querySelectorAll('.legend p').length,
-  toolbarBtns: ['btnHome', 'btnZoomIn', 'btnZoomOut', 'btnTurnL', 'btnTurnR', 'btnMeasure', 'btnLabels', 'btnThemeUI'].every((id) => {
+  toolbarBtns: ['btnHome', 'btnWalkthrough', 'btnZoomIn', 'btnZoomOut', 'btnTurnL', 'btnTurnR', 'btnMeasure', 'btnLabels', 'btnThemeUI'].every((id) => {
     const el = document.getElementById(id); if (!el) return false;
     const r = el.getBoundingClientRect(); return r.width * r.height > 0;
   })
@@ -212,15 +226,30 @@ await desktop.waitForTimeout(800);
 const compassAfter = await desktop.evaluate(() => document.getElementById('compassNeedle').style.transform);
 if (compassAfter === furniture.compassBefore) fail('desktop light: north arrow did not turn after Turn right');
 
+console.log('  checking triggers (keys, bar, pins)...');
 await placesByTrigger(desktop, 'desktop light keys', byKey, outDir);
 await placesByTrigger(desktop, 'desktop light place bar', byBar);
 await placesByTrigger(desktop, 'desktop light pins', byPin);
+
+console.log('  checking walkthrough with chilancho...');
+await desktop.click('#btnWalkthrough');
+await desktop.waitForTimeout(800);
+const wtState = await panelState(desktop);
+if (wtState.hidden) fail('Walkthrough button did not open place panel');
+if (wtState.name !== 'Chilancho') fail(`Walkthrough opened "${wtState.name}", expected "Chilancho"`);
+await desktop.keyboard.press('Escape');
+await desktop.waitForTimeout(300);
+
 await desktop.context().close();
 
+console.log('  checking deep links...');
 await deepLink(PLACES[0], 'deep link uma');
 await deepLink(PLACES[PLACES.length - 1], 'deep link stupa');
 
+console.log('  checking dark mode & mobile viewports...');
 const desktopDark = await open({ width: 1440, height: 900, colorScheme: 'dark' });
+await desktopDark.click('#btnThemeUI');
+await desktopDark.waitForTimeout(400);
 await wholeIsland(desktopDark, 'desktop dark');
 await desktopDark.screenshot({ path: join(outDir, 'whole-island-desktop-dark.png'), timeout: 120000 });
 await desktopDark.context().close();
@@ -231,6 +260,8 @@ await mobile.screenshot({ path: join(outDir, 'whole-island-mobile-light.png'), t
 await mobile.context().close();
 
 const mobileDark = await open({ width: 390, height: 844, colorScheme: 'dark' });
+await mobileDark.click('#btnThemeUI');
+await mobileDark.waitForTimeout(400);
 await wholeIsland(mobileDark, 'mobile dark');
 await mobileDark.screenshot({ path: join(outDir, 'whole-island-mobile-dark.png'), timeout: 120000 });
 await mobileDark.context().close();

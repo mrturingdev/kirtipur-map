@@ -324,15 +324,26 @@ html, body { overflow: hidden; }
 .map-labels .lbl.water { color: #1f5f7a; }
 .map-labels .lbl.measure { font: 600 12px/1.2 ui-monospace, monospace; font-style: normal; color: #fffaf2; background: #73281b; padding: 2px 6px; text-shadow: none; }
 :root[data-theme="dark"] .map-labels .lbl:not(.measure), .map-labels.night .lbl:not(.measure) { color: #f2e2d0; text-shadow: 0 0 3px #110e12; }
-/* The credit line sits bottom-left, above the toolbar strip that now runs along the bottom edge */
-.map-credit { position: absolute; left: 8px; bottom: 46px; max-width: calc(70% - 16px); margin: 0; padding: 3px 7px; border-radius: 4px; font: 10px/1.35 ui-monospace, monospace; color: #f3e6d8; background: rgba(23, 19, 15, 0.72); pointer-events: none; z-index: 1; }
+/* The credit / metric line is hidden as requested */
+.map-credit { display: none !important; }
+/* Instagram link in bottom-right corner */
+.insta-badge {
+  position: absolute; right: 8px; bottom: 46px; z-index: 3;
+  display: flex; align-items: center; gap: 6px; padding: 4px 9px;
+  border-radius: 6px; font: 600 11px/1.2 var(--f-mono);
+  color: var(--ink); background: var(--card); border: 1px solid var(--rule);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.25); text-decoration: none; pointer-events: auto;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.insta-badge:hover, .insta-badge:focus-visible { color: #fff; background: #c13584; border-color: #c13584; outline: none; }
+.insta-badge svg { flex: none; }
 @media (max-width: 600px) {
   /* The engine shell's own mobile rule (`.stage { height: 58vh }`, for its usual stacked
      header/scoreboard/stage/feed layout) otherwise confines the full-viewport map - and
      everything positioned inside #stage, including this map's own UI - to the screen's top
      58%; same selector specificity, so this later rule wins. */
   .stage { height: 100vh; height: 100dvh; min-height: 0; }
-  .map-credit { max-width: calc(100% - 16px); bottom: 96px; }
+  .insta-badge { bottom: 96px; right: 8px; font-size: 10px; padding: 3px 7px; }
   .map-labels .lbl.major { font-size: 12px; } .map-labels .lbl.minor { font-size: 9px; }
 }
 /* Map furniture: numbered pins on the six places, a north arrow, a scale bar in true metres
@@ -383,7 +394,9 @@ html, body { overflow: hidden; }
   border-left: 1px solid var(--rule); box-shadow: -4px 0 16px rgba(0, 0, 0, 0.25); }
 .panel[hidden] { display: none; }
 .panel-head { display: flex; align-items: center; gap: 6px; padding: 10px 8px; border-bottom: 1px solid var(--rule); flex: none; }
-.panel-head h2 { flex: 1; margin: 0; font: 700 15px/1.2 var(--f-pixel); letter-spacing: 0.01em; text-align: center; }
+.panel-title-wrap { flex: 1; text-align: center; }
+.panel-badge { display: block; font: 600 9px/1 var(--f-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); margin-bottom: 2px; }
+.panel-head h2 { margin: 0; font: 700 15px/1.2 var(--f-pixel); letter-spacing: 0.01em; }
 .panel-nav, .panel-close { border: 1px solid var(--rule); background: var(--card-2); color: var(--ink); border-radius: 5px; width: 30px; height: 30px; font: 600 15px/1 var(--f-mono); cursor: pointer; }
 .panel-nav:hover, .panel-close:hover { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .panel-nav:focus-visible, .panel-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -455,8 +468,15 @@ html, body { overflow: hidden; }
         <b id="scaleLabel">50 m</b>
       </div>
       <p class="map-credit">1 unit = 4 m · colour bands every 2 m · ground SRTM 30 m · building heights GHSL (c) EU + Mapillary (CC BY-SA) · map data © OpenStreetMap contributors</p>
+      <a href="https://www.instagram.com/mrturingdev.diorama/" target="_blank" rel="noopener noreferrer" class="insta-badge" id="instaLink" aria-label="Instagram mrturingdev.diorama">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+        </svg>
+        <span>mrturingdev.diorama</span>
+      </a>
       <div class="map-toolbar" role="group" aria-label="Map controls">
         <button type="button" class="btn" id="btnHome">Whole island</button>
+        <button type="button" class="btn" id="btnWalkthrough">Walkthrough</button>
         <div class="seg" id="segPlaces" role="group" aria-label="Places">
           <button type="button" data-v="uma" aria-pressed="false" aria-label="Uma Maheshwar"><b>1</b><span class="place-name"> Uma</span></button>
           <button type="button" data-v="lyaku" aria-pressed="false" aria-label="Lyaku Museum"><b>2</b><span class="place-name"> Lyaku</span></button>
@@ -481,7 +501,10 @@ html, body { overflow: hidden; }
       <aside class="panel" id="panel" tabindex="-1" role="dialog" aria-modal="false" aria-labelledby="panelName" hidden>
         <div class="panel-head">
           <button type="button" class="panel-nav" id="panelPrev" aria-label="Previous place">&larr;</button>
-          <h2 id="panelName"></h2>
+          <div class="panel-title-wrap">
+            <span class="panel-badge" id="panelBadge">Walkthrough</span>
+            <h2 id="panelName"></h2>
+          </div>
           <button type="button" class="panel-nav" id="panelNext" aria-label="Next place">&rarr;</button>
           <button type="button" class="panel-close" id="panelClose" aria-label="Close place panel">&times;</button>
         </div>
@@ -3484,6 +3507,7 @@ const walkMesh = ribbonMesh(walkRuns, walkTex, 4, 0.045); // just above the lane
 /* ------------------------------------------------------------------ */
 const panel = $('panel');
 const panelName = $('panelName');
+const panelBadge = $('panelBadge');
 const panelHistory = $('panelHistory');
 const panelLook = $('panelLook');
 const panelPhotos = $('panelPhotos');
@@ -3506,6 +3530,8 @@ function openPlacePanel(F_) {
   if (panel.hidden) panelReturnFocus = document.activeElement;
   panel.dataset.key = F_.key;
   panelName.textContent = F_.name;
+  const idx = FOCUS.findIndex((f) => f.key === F_.key);
+  panelBadge.textContent = `Walkthrough · ${idx + 1} of ${FOCUS.length}`;
   panelHistory.textContent = F_.history;
   panelLook.textContent = F_.text;
   panelPhotos.replaceChildren(...F_.photos.map((P) => panelPhoto(P, F_.key)));
@@ -3564,6 +3590,10 @@ envHooks.onTime = (mode) => { if (!selfTime) setHour({ day: 12, dusk: sunToday()
 // each that decode of a specific PALETTE hex, landing exactly on it with no dither margin either
 // side: '#f9efe3' (paper) and '#171417' (near-black warm dark), both confirmed flat by sampling
 // an empty screen corner in a built page (see NOTES-gnhf.md).
+// Default to light theme
+document.documentElement.dataset.theme = 'light';
+syncThemeBtn();
+
 const MAP_BG = { light: [0.94731, 0.86316, 0.76815], dark: [0.00857, 0.007, 0.00857] };
 function applyMapBg() {
   const c = MAP_BG[effectiveTheme()];
@@ -3700,7 +3730,7 @@ function updateScaleBar() {
 // touching _engine: a capture-phase pointerdown listener on the same #stage element stops the
 // event before it reaches ui.js's bubble-phase listener, whenever the real target is one of our
 // own controls (any button, or anywhere inside the place panel, which also sits inside #stage).
-stageEl.addEventListener('pointerdown', (e) => { if (e.target.closest('button, input, .panel')) e.stopPropagation(); }, { capture: true });
+stageEl.addEventListener('pointerdown', (e) => { if (e.target.closest('button, input, .panel, a')) e.stopPropagation(); }, { capture: true });
 function actOn(kind, r, point, quiet) {
   if (!quiet) sfx.unlock(); // skipped for the #place=<key> deep-link's programmatic open: no user
   if (kind === 'ground') {  // gesture yet to unlock audio on, and Chrome warns on the console for it
@@ -3745,7 +3775,7 @@ function flyTo(at, zoom) { fly.goal = new THREE.Vector3(...at); fly.zoom = zoom;
 const BASE_W = 190, BASE_H = 170, TALL_W = 190;
 const COS2_EL = Math.cos(iso.el) ** 2; // a pure world-Y nudge is foreshortened by this at the fixed isometric look-down angle
 function frameScale(zoom) {
-  const stageW = stageEl.clientWidth, stageH = stageEl.clientHeight;
+  const stageW = stageEl.clientWidth || innerWidth || 1440, stageH = stageEl.clientHeight || innerHeight || 900;
   const aspect = stageW / stageH;
   const base = Math.max(BASE_H, (aspect < 1 && TALL_W ? TALL_W : BASE_W) / aspect);
   return (base * zoom) / stageH; // world units per CSS pixel, isotropic for this orthographic camera
@@ -3768,7 +3798,7 @@ function homeTarget() {
 // sheet on phones - using the same panel/sheet sizing the CSS itself uses (src/style.css's
 // `width: min(380px, 92vw)` and the mobile `max-height: 45vh`).
 function panelOffset(zoom) {
-  const stageW = stageEl.clientWidth, stageH = stageEl.clientHeight;
+  const stageW = stageEl.clientWidth || innerWidth || 1440, stageH = stageEl.clientHeight || innerHeight || 900;
   const mobile = stageW <= 600;
   const clear = (mobile ? stageH * 0.45 : Math.min(380, stageW * 0.92)) / 2;
   const scale = frameScale(zoom);
@@ -3811,6 +3841,7 @@ function updateOrbit(dt) {
 }
 function goHome() { flyTo(homeTarget(), HOME.zoom); for (const b of document.querySelectorAll('#segPlaces button')) b.setAttribute('aria-pressed', 'false'); history.replaceState(null, '', location.pathname + location.search); closePlacePanel(); }
 $('btnHome').addEventListener('click', goHome);
+$('btnWalkthrough').addEventListener('click', () => actOn('site', focusOf('stupa')));
 // The Places bar, and keys 1-6, jump to each focus place
 for (const b of document.querySelectorAll('#segPlaces button')) b.addEventListener('click', () => actOn('site', focusOf(b.dataset.v)));
 document.addEventListener('keydown', (e) => {
@@ -3922,18 +3953,15 @@ bake(S);
 configureShadow(90, 400);
 setTime('day', true);
 log('KIRTIPUR', 'Kirtipur at true scale, floating: 440 × 460 m of the old town, every building from OpenStreetMap at its GHSL height, the ground from SRTM heights, smoothed.', 'info');
-// #place=<key> deep link: land on that place on load, same close-up as picking it from the Places bar.
-// Snap instantly rather than letting the usual glide play out: the first real frames after a cold page
-// load (shader compiles, scene build) run far slower than 60fps, and the glide's per-frame easing is
-// clamped to a fixed max step per frame (see loop.js's dt clamp), so over a few slow frames it would only
-// crawl partway to the target instead of arriving like a click does on an already-warm page.
+// #place=<key> deep link or landing walkthrough: if a place is given in the hash,
+// land on it. Otherwise start the walkthrough on Chilancho.
 (() => {
   const m = /^#place=(\w+)$/.exec(location.hash);
-  const F_ = m && focusOf(m[1]);
-  if (!F_) return;
-  actOn('site', F_, null, true); // quiet: no user gesture yet on a deep-linked load
+  const target = (m && focusOf(m[1])) || focusOf('stupa');
+  if (!target) return;
+  actOn('site', target, null, true); // quiet: no user gesture yet on an initial load
   iso.target.copy(fly.goal); iso.zoom = fly.zoom; fly.goal = null;
-  COLLAPSE.focus.value.set(F_.view[0], F_.view[2], F_.collapse * U);
+  COLLAPSE.focus.value.set(target.view[0], target.view[2], target.collapse * U);
   COLLAPSE.amount.value = 1;
 })();
 startLoop({ simulate, ui: refreshUI, draw, debug: { day, walkers, stats, measure, bus, busPath } });

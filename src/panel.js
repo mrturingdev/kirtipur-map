@@ -7,6 +7,7 @@
 /* ------------------------------------------------------------------ */
 const panel = $('panel');
 const panelName = $('panelName');
+const panelBadge = $('panelBadge');
 const panelHistory = $('panelHistory');
 const panelLook = $('panelLook');
 const panelPhotos = $('panelPhotos');
@@ -29,6 +30,8 @@ function openPlacePanel(F_) {
   if (panel.hidden) panelReturnFocus = document.activeElement;
   panel.dataset.key = F_.key;
   panelName.textContent = F_.name;
+  const idx = FOCUS.findIndex((f) => f.key === F_.key);
+  panelBadge.textContent = `Walkthrough · ${idx + 1} of ${FOCUS.length}`;
   panelHistory.textContent = F_.history;
   panelLook.textContent = F_.text;
   panelPhotos.replaceChildren(...F_.photos.map((P) => panelPhoto(P, F_.key)));

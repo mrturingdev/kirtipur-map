@@ -35,6 +35,10 @@ envHooks.onTime = (mode) => { if (!selfTime) setHour({ day: 12, dusk: sunToday()
 // each that decode of a specific PALETTE hex, landing exactly on it with no dither margin either
 // side: '#f9efe3' (paper) and '#171417' (near-black warm dark), both confirmed flat by sampling
 // an empty screen corner in a built page (see NOTES-gnhf.md).
+// Default to light theme
+document.documentElement.dataset.theme = 'light';
+syncThemeBtn();
+
 const MAP_BG = { light: [0.94731, 0.86316, 0.76815], dark: [0.00857, 0.007, 0.00857] };
 function applyMapBg() {
   const c = MAP_BG[effectiveTheme()];
@@ -171,7 +175,7 @@ function updateScaleBar() {
 // touching _engine: a capture-phase pointerdown listener on the same #stage element stops the
 // event before it reaches ui.js's bubble-phase listener, whenever the real target is one of our
 // own controls (any button, or anywhere inside the place panel, which also sits inside #stage).
-stageEl.addEventListener('pointerdown', (e) => { if (e.target.closest('button, input, .panel')) e.stopPropagation(); }, { capture: true });
+stageEl.addEventListener('pointerdown', (e) => { if (e.target.closest('button, input, .panel, a')) e.stopPropagation(); }, { capture: true });
 function actOn(kind, r, point, quiet) {
   if (!quiet) sfx.unlock(); // skipped for the #place=<key> deep-link's programmatic open: no user
   if (kind === 'ground') {  // gesture yet to unlock audio on, and Chrome warns on the console for it
@@ -216,7 +220,7 @@ function flyTo(at, zoom) { fly.goal = new THREE.Vector3(...at); fly.zoom = zoom;
 const BASE_W = 190, BASE_H = 170, TALL_W = 190;
 const COS2_EL = Math.cos(iso.el) ** 2; // a pure world-Y nudge is foreshortened by this at the fixed isometric look-down angle
 function frameScale(zoom) {
-  const stageW = stageEl.clientWidth, stageH = stageEl.clientHeight;
+  const stageW = stageEl.clientWidth || innerWidth || 1440, stageH = stageEl.clientHeight || innerHeight || 900;
   const aspect = stageW / stageH;
   const base = Math.max(BASE_H, (aspect < 1 && TALL_W ? TALL_W : BASE_W) / aspect);
   return (base * zoom) / stageH; // world units per CSS pixel, isotropic for this orthographic camera
@@ -239,7 +243,7 @@ function homeTarget() {
 // sheet on phones - using the same panel/sheet sizing the CSS itself uses (src/style.css's
 // `width: min(380px, 92vw)` and the mobile `max-height: 45vh`).
 function panelOffset(zoom) {
-  const stageW = stageEl.clientWidth, stageH = stageEl.clientHeight;
+  const stageW = stageEl.clientWidth || innerWidth || 1440, stageH = stageEl.clientHeight || innerHeight || 900;
   const mobile = stageW <= 600;
   const clear = (mobile ? stageH * 0.45 : Math.min(380, stageW * 0.92)) / 2;
   const scale = frameScale(zoom);
@@ -282,6 +286,7 @@ function updateOrbit(dt) {
 }
 function goHome() { flyTo(homeTarget(), HOME.zoom); for (const b of document.querySelectorAll('#segPlaces button')) b.setAttribute('aria-pressed', 'false'); history.replaceState(null, '', location.pathname + location.search); closePlacePanel(); }
 $('btnHome').addEventListener('click', goHome);
+$('btnWalkthrough').addEventListener('click', () => actOn('site', focusOf('stupa')));
 // The Places bar, and keys 1-6, jump to each focus place
 for (const b of document.querySelectorAll('#segPlaces button')) b.addEventListener('click', () => actOn('site', focusOf(b.dataset.v)));
 document.addEventListener('keydown', (e) => {
@@ -393,18 +398,15 @@ bake(S);
 configureShadow(90, 400);
 setTime('day', true);
 log('KIRTIPUR', 'Kirtipur at true scale, floating: 440 × 460 m of the old town, every building from OpenStreetMap at its GHSL height, the ground from SRTM heights, smoothed.', 'info');
-// #place=<key> deep link: land on that place on load, same close-up as picking it from the Places bar.
-// Snap instantly rather than letting the usual glide play out: the first real frames after a cold page
-// load (shader compiles, scene build) run far slower than 60fps, and the glide's per-frame easing is
-// clamped to a fixed max step per frame (see loop.js's dt clamp), so over a few slow frames it would only
-// crawl partway to the target instead of arriving like a click does on an already-warm page.
+// #place=<key> deep link or landing walkthrough: if a place is given in the hash,
+// land on it. Otherwise start the walkthrough on Chilancho.
 (() => {
   const m = /^#place=(\w+)$/.exec(location.hash);
-  const F_ = m && focusOf(m[1]);
-  if (!F_) return;
-  actOn('site', F_, null, true); // quiet: no user gesture yet on a deep-linked load
+  const target = (m && focusOf(m[1])) || focusOf('stupa');
+  if (!target) return;
+  actOn('site', target, null, true); // quiet: no user gesture yet on an initial load
   iso.target.copy(fly.goal); iso.zoom = fly.zoom; fly.goal = null;
-  COLLAPSE.focus.value.set(F_.view[0], F_.view[2], F_.collapse * U);
+  COLLAPSE.focus.value.set(target.view[0], target.view[2], target.collapse * U);
   COLLAPSE.amount.value = 1;
 })();
 startLoop({ simulate, ui: refreshUI, draw, debug: { day, walkers, stats, measure, bus, busPath } });

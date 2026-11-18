@@ -10,5 +10,6 @@ ref/
 dist/
 *.zip
 node_modules/
+site-check-out/
 .DS_Store
 
