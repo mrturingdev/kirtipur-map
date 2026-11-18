@@ -36,13 +36,20 @@ jobs:
           base="https://$CPANEL_HOST:$CPANEL_PORT/execute"
           auth="Authorization: cpanel $CPANEL_USER:$CPANEL_TOKEN"
 
-          # 1. Discover domain documentroot and existing git repositories on cPanel
+          # 1. Discover domain documentroot, home directory and existing git repositories on cPanel
           domains=$(curl -sS --max-time 60 -H "$auth" "$base/DomainInfo/domains_data")
+          homedir=$(printf '%s' "$domains" | jq -r '.data.main_domain.homedir // empty')
+          if [ -z "$homedir" ]; then
+            homedir=$(printf '%s' "$domains" | jq -r '.data.main_domain.documentroot // empty' | sed 's#/public_html.*##')
+          fi
+          echo "Discovered cPanel home directory: ${homedir:-<none>}"
+
           docroot=$(printf '%s' "$domains" | jq -r '
             [ .data.main_domain, (.data.sub_domains // [])[], (.data.addon_domains // [])[] ]
             | map(select(. != null and (.domain | ascii_downcase | contains("kirtipur"))))
             | .[0].documentroot // empty
           ')
+          echo "Discovered kirtipur documentroot: ${docroot:-<none>}"
 
           repos=$(curl -sS --max-time 60 -H "$auth" "$base/VersionControl/retrieve")
           repo_root=$(printf '%s' "$repos" | jq -r --arg cfg "$CPANEL_REPO" --arg doc "$docroot" '
@@ -55,7 +62,9 @@ jobs:
 
           # 2. If no repo exists yet in cPanel Git Version Control, create/clone it
           if [ -z "$repo_root" ]; then
-            target="/home/$CPANEL_USER/repositories/kirtipur-map"
+            target="${homedir:+${homedir}/repositories/kirtipur-map}"
+            target="${target:-repositories/kirtipur-map}"
+            echo "Creating cPanel repository at: $target"
             src=$(jq -nc --arg url "$REPO_URL" '{"remote_name":"origin","url":$url}')
             create_resp=$(curl -sS --max-time 180 -G -H "$auth" "$base/VersionControl/create" \
               --data-urlencode "type=git" \
@@ -63,13 +72,27 @@ jobs:
               --data-urlencode "repository_root=$target" \
               --data-urlencode "branch=main" \
               --data-urlencode "source_repository=$src")
-            printf '%s\n' "$create_resp" | jq -c '{status, errors}'
+            printf '%s\n' "$create_resp" | jq -c '{status, errors, repository_root: .data.repository_root}'
             if [ "$(printf '%s' "$create_resp" | jq -r '.status')" != "1" ]; then
-              echo "::error::Failed to find or create cPanel Git repository"
-              exit 1
+              # Try relative path fallback
+              target="repositories/kirtipur-map"
+              echo "Retrying repository creation at relative path: $target"
+              create_resp=$(curl -sS --max-time 180 -G -H "$auth" "$base/VersionControl/create" \
+                --data-urlencode "type=git" \
+                --data-urlencode "name=kirtipur-map" \
+                --data-urlencode "repository_root=$target" \
+                --data-urlencode "branch=main" \
+                --data-urlencode "source_repository=$src")
+              printf '%s\n' "$create_resp" | jq -c '{status, errors, repository_root: .data.repository_root}'
+              if [ "$(printf '%s' "$create_resp" | jq -r '.status')" != "1" ]; then
+                echo "::error::Failed to find or create cPanel Git repository"
+                exit 1
+              fi
             fi
-            repo_root="$target"
+            repo_root=$(printf '%s' "$create_resp" | jq -r '.data.repository_root // empty')
+            repo_root="${repo_root:-$target}"
           fi
+          echo "Using cPanel repository root: $repo_root"
 
           # 3. Pull latest commits from origin/main
           upd_resp=$(curl -sS --max-time 180 -G -H "$auth" "$base/VersionControl/update" \
