@@ -128,41 +128,6 @@ function ringBell() { const b = pick(bells); b.swing = 1; sfx.templeBell(); stat
 function updateBells(dt, t) { for (const b of bells) { b.swing = Math.max(0, b.swing - dt * 0.4); b.g.rotation.x = Math.sin(t * 7) * 0.5 * b.swing; } }
 
 /* ------------------------------------------------------------------ */
-/* The bus on the main road: the longest unbroken run of the drawn     */
-/* asphalt road, so it never cuts across the old town where the road   */
-/* leaves the board and comes back in                                 */
-/* ------------------------------------------------------------------ */
-const busPath = (() => {
-  const run = _ribbons.asphalt.reduce((a, b) => (b.run.length > a.length ? b.run : a), []);
-  const pts = run.map(([x, z]) => [wX(x), wZ(z)]);
-  let L = 0;
-  const seg = pts.slice(1).map((q, i) => { const d = Math.hypot(q[0] - pts[i][0], q[1] - pts[i][1]); L += d; return d; });
-  return { pts, seg, L };
-})();
-const busG = group(0, 0, 0);
-busG.userData.live = true;
-(() => { // 10 m long, at map scale
-  const b = group(0, 0, 0, busG); b.scale.setScalar(U);
-  box(10, 2.6, 2.5, '#388296', 0, 1.9, 0, b); box(10.04, 0.4, 2.54, '#fffaf2', 0, 1.7, 0, b);
-  box(9, 0.8, 2.56, '#bce4eb', 0, 2.6, 0, b); box(9.6, 0.4, 2.2, '#f5b841', 0, 3.4, 0, b);
-  for (const x of [-3.4, 3.4]) for (const z of [-1.25, 1.25]) box(1.1, 1.1, 0.3, '#26221f', x, 0.55, z, b);
-})();
-const bus = { s: 0, dir: 1, wait: 0 };
-function updateBus(dt) {
-  const B = busPath;
-  if (B.pts.length < 2) { busG.visible = false; return; }
-  if (B.wait > 0) { B.wait -= dt; return; }
-  bus.s += bus.dir * dt * 2.2; // 8.8 m/s
-  if (bus.s > B.L || bus.s < 0) { bus.dir *= -1; bus.s = clamp(bus.s, 0, B.L); B.wait = rnd(8, 20); sfx.horn(); }
-  let s = bus.s, i = 0;
-  while (i < B.seg.length - 1 && s > B.seg[i]) { s -= B.seg[i]; i++; }
-  const [ax, az] = B.pts[i], [bx, bz] = B.pts[i + 1], u = clamp(s / B.seg[i], 0, 1);
-  const x = ax + (bx - ax) * u, z = az + (bz - az) * u;
-  busG.position.set(x, groundY(x, z), z);
-  busG.rotation.y = -Math.atan2(bz - az, bx - ax) + (bus.dir < 0 ? Math.PI : 0);
-}
-
-/* ------------------------------------------------------------------ */
 /* Measuring: click two points for straight, walking and height gaps   */
 /* ------------------------------------------------------------------ */
 const measure = { on: false, a: null, b: null, text: '' };

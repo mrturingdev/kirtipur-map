@@ -42,7 +42,7 @@ html, body { overflow: hidden; }
      everything positioned inside #stage, including this map's own UI - to the screen's top
      58%; same selector specificity, so this later rule wins. */
   .stage { height: 100vh; height: 100dvh; min-height: 0; }
-  .insta-badge { bottom: 96px; right: 8px; font-size: 10px; padding: 3px 7px; }
+  .insta-badge { bottom: var(--toolbar-clear, 132px); right: 8px; font-size: 10px; padding: 3px 7px; }
   .map-labels .lbl.major { font-size: 12px; } .map-labels .lbl.minor { font-size: 9px; }
 }
 /* Map furniture: numbered pins on the six places, a north arrow, a scale bar in true metres
@@ -96,9 +96,11 @@ html, body { overflow: hidden; }
 .panel-title-wrap { flex: 1; text-align: center; }
 .panel-badge { display: block; font: 600 9px/1 var(--f-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); margin-bottom: 2px; }
 .panel-head h2 { margin: 0; font: 700 15px/1.2 var(--f-pixel); letter-spacing: 0.01em; }
-.panel-nav, .panel-close { border: 1px solid var(--rule); background: var(--card-2); color: var(--ink); border-radius: 5px; width: 30px; height: 30px; font: 600 15px/1 var(--f-mono); cursor: pointer; }
-.panel-nav:hover, .panel-close:hover { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-.panel-nav:focus-visible, .panel-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.panel-nav, .panel-toggle, .panel-close { border: 1px solid var(--rule); background: var(--card-2); color: var(--ink); border-radius: 5px; width: 30px; height: 30px; font: 600 15px/1 var(--f-mono); cursor: pointer; }
+.panel-toggle { display: none; }
+.panel-toggle span { display: inline-block; transition: transform 0.15s ease; }
+.panel-nav:hover, .panel-toggle:hover, .panel-close:hover { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.panel-nav:focus-visible, .panel-toggle:focus-visible, .panel-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .panel-body { flex: 1; overflow-y: auto; padding: 4px 14px 16px; }
 .panel-history, .panel-look { font: 13px/1.5 var(--f-body); color: var(--ink); }
 .panel-look { color: var(--muted); font-style: italic; }
@@ -108,5 +110,17 @@ html, body { overflow: hidden; }
 .panel-photo figcaption { font: 10px/1.4 ui-monospace, monospace; color: var(--muted); margin-top: 3px; }
 .panel-photo figcaption a { color: var(--accent); }
 @media (max-width: 600px) {
-  .panel { top: auto; left: 0; right: 0; width: auto; max-height: 45vh; border-left: 0; border-top: 1px solid var(--rule); border-radius: 10px 10px 0 0; box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3); }
+  .panel {
+    top: auto; left: 8px; right: 8px; bottom: var(--toolbar-clear, 132px); width: auto;
+    max-height: min(38vh, calc(100% - var(--toolbar-clear, 132px) - 52px));
+    border: 1px solid var(--rule); border-radius: 10px;
+    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.3);
+    z-index: 3;
+  }
+  .panel-toggle { display: inline-grid; place-items: center; }
+  .panel-title-wrap { cursor: pointer; }
+  .panel.collapsed .panel-body { display: none; }
+  .panel.collapsed .panel-head { border-bottom: 0; padding: 7px 8px; }
+  .panel.collapsed .panel-toggle span { transform: rotate(180deg); }
+  .stage:has(.panel:not([hidden])) .insta-badge { opacity: 0; pointer-events: none; }
 }

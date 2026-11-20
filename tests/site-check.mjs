@@ -255,6 +255,48 @@ await desktopDark.screenshot({ path: join(outDir, 'whole-island-desktop-dark.png
 await desktopDark.context().close();
 
 const mobile = await open({ width: 390, height: 844 });
+// On mobile initial walkthrough load, the place panel starts expanded above the toolbar and can be collapsed.
+const mobilePanelBox = (pg) => pg.evaluate(() => {
+  const p = document.getElementById('panel');
+  const b = document.getElementById('panelBody');
+  const t = document.getElementById('panelToggle');
+  const tb = document.querySelector('.map-toolbar');
+  const pr = p.getBoundingClientRect(), br = b.getBoundingClientRect(), tbr = tb.getBoundingClientRect();
+  return {
+    hidden: p.hidden,
+    collapsed: p.classList.contains('collapsed'),
+    expandedAttr: t.getAttribute('aria-expanded'),
+    bodyVisible: br.height > 0 && getComputedStyle(b).display !== 'none',
+    panelBottom: Math.round(pr.bottom),
+    toolbarTop: Math.round(tbr.top),
+    panelHeight: Math.round(pr.height)
+  };
+});
+await mobile.waitForTimeout(400);
+const mExp = await mobilePanelBox(mobile);
+if (mExp.hidden || mExp.collapsed || mExp.expandedAttr !== 'true' || !mExp.bodyVisible) {
+  fail(`mobile light: panel did not start expanded (${JSON.stringify(mExp)})`);
+}
+if (mExp.panelBottom > mExp.toolbarTop) {
+  fail(`mobile light: expanded panel bottom (${mExp.panelBottom}) overlaps toolbar top (${mExp.toolbarTop})`);
+}
+await mobile.screenshot({ path: join(outDir, 'place-stupa-mobile-expanded.png'), timeout: 120000 });
+await mobile.click('#panelToggle');
+await mobile.waitForTimeout(200);
+const mCol = await mobilePanelBox(mobile);
+if (mCol.hidden || !mCol.collapsed || mCol.expandedAttr !== 'false' || mCol.bodyVisible) {
+  fail(`mobile light: panel did not collapse on toggle click (${JSON.stringify(mCol)})`);
+}
+if (mCol.panelBottom > mCol.toolbarTop || mCol.panelHeight >= mExp.panelHeight) {
+  fail(`mobile light: collapsed bar positioning/height invalid (${JSON.stringify(mCol)})`);
+}
+await mobile.screenshot({ path: join(outDir, 'place-stupa-mobile-collapsed.png'), timeout: 120000 });
+await mobile.click('#panelTitleWrap');
+await mobile.waitForTimeout(200);
+const mReExp = await mobilePanelBox(mobile);
+if (mReExp.collapsed || mReExp.expandedAttr !== 'true' || !mReExp.bodyVisible) {
+  fail(`mobile light: panel did not re-expand on header tap (${JSON.stringify(mReExp)})`);
+}
 await wholeIsland(mobile, 'mobile light');
 await mobile.screenshot({ path: join(outDir, 'whole-island-mobile-light.png'), timeout: 120000 });
 await mobile.context().close();
@@ -275,6 +317,7 @@ await reduced.context().close();
 // clouds back would reintroduce this telltale identifier from src/terrain.js.
 const html = readFileSync(join(ROOT, 'index.html'), 'utf8');
 if (html.includes('cloudMat') || html.includes('Clouds drifting')) fail('clouds are back in the built page');
+if (/const busG|updateBus|\/\/ a car\b/.test(html)) fail('cars/bus are back in the built page');
 
 await browser.close();
 server.close();

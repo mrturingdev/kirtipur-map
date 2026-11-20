@@ -2,7 +2,7 @@
 /* Street detail, from OSM points and outlines, dressed as the         */
 /* Mapillary photos show the lanes: pati shelters, shopfronts with     */
 /* goods hanging at the door, Sankhadhar Sakhwa's statue, poles with   */
-/* bundles of wires, parked motorbikes and cars, blue water drums.     */
+/* bundles of wires, parked motorbikes, blue water drums.              */
 /* Pati are drawn wherever OSM maps them; the rest fills the stretch   */
 /* from Bagh Bhairab's gate down to Dey Pukhu and the lanes round each */
 /* of the six places.                                                 */
@@ -44,7 +44,7 @@ for (const P of MAP.pois) {
   else for (let i = 0; i < 3; i++) box(0.4, 0.4, 0.4, GOODS[(i + 3) % GOODS.length], -0.9 + i * 0.5, 0.5, 0.2, g, false); // sacks and crates out front
 }
 
-/* Along the lanes of the stretch: poles and wires, parked motorbikes and cars, water drums */
+/* Along the lanes of the stretch: poles and wires, parked motorbikes, water drums */
 (() => {
   const poles = [];
   for (const rd of MAP.roads) {
@@ -69,11 +69,6 @@ for (const P of MAP.pois) {
           box(1.7, 0.45, 0.32, GOODS[Math.floor(r * 77) % GOODS.length], 0, 0.75, 0, g); box(0.7, 0.15, 0.34, '#26221f', -0.2, 1.02, 0, g);
           for (const wx_ of [-0.62, 0.62]) box(0.55, 0.55, 0.14, '#26221f', wx_, 0.28, 0, g);
           box(0.08, 0.5, 0.6, '#5c554e', 0.75, 1.1, 0, g);
-        } else if (r > 0.985) { // a car
-          const g = atMapPoint(sx - uz * side * 0.6, sz + ux * side * 0.6, Math.atan2(uz, ux));
-          const c = r > 0.993 ? '#c45134' : '#fffaf2';
-          box(4, 0.8, 1.7, c, 0, 0.7, 0, g); box(2.2, 0.6, 1.5, '#bce4eb', -0.2, 1.4, 0, g);
-          for (const [wx_, wz] of [[-1.3, -0.85], [1.3, -0.85], [-1.3, 0.85], [1.3, 0.85]]) box(0.6, 0.6, 0.2, '#26221f', wx_, 0.3, wz, g);
         } else if (r > 0.94 && r < 0.955) { // a blue water drum by a doorway
           const g = atMapPoint(sx, sz); cyl(0.35, 0.35, 0.9, 10, '#388296', 0, 0.45, 0, g);
         }

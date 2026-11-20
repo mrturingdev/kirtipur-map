@@ -15,7 +15,7 @@ import xml.etree.ElementTree as ET
 
 LAT0, LON0 = 27.67943, 85.27652          # Bagh Bhairab
 MX = 111320 * math.cos(math.radians(LAT0)); MZ = 110574
-X0, X1, Z0, Z1 = -240, 200, -130, 330     # board, metres
+X0, X1, Z0, Z1 = -340, 300, -280, 440     # board, metres
 STEP = 20                                 # elevation sample spacing, metres
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -27,7 +27,9 @@ def elevations():
     cache = os.path.join(HERE, 'elev.json')
     nx, nz = (X1 - X0) // STEP + 1, (Z1 - Z0) // STEP + 1
     if os.path.exists(cache):
-        return json.load(open(cache))
+        E = json.load(open(cache))
+        if E.get('x0') == X0 and E.get('z0') == Z0 and E.get('step') == STEP and E.get('nx') == nx and E.get('nz') == nz:
+            return E
     pts = [ll(X0 + i * STEP, Z0 + j * STEP) for j in range(nz) for i in range(nx)]
     h = []
     for k in range(0, len(pts), 100):

@@ -217,7 +217,7 @@ function flyTo(at, zoom) { fly.goal = new THREE.Vector3(...at); fly.zoom = zoom;
 // iso.configure below (camera.js's own base-view-height formula), so a target's final, settled
 // viewH - and from it, world units per CSS pixel at the current viewport - can be computed before
 // the camera glide there actually finishes.
-const BASE_W = 190, BASE_H = 170, TALL_W = 190;
+const BASE_W = 280, BASE_H = 235, TALL_W = 260;
 const COS2_EL = Math.cos(iso.el) ** 2; // a pure world-Y nudge is foreshortened by this at the fixed isometric look-down angle
 function frameScale(zoom) {
   const stageW = stageEl.clientWidth || innerWidth || 1440, stageH = stageEl.clientHeight || innerHeight || 900;
@@ -231,7 +231,7 @@ function frameScale(zoom) {
 // for this camera basis; see updateCompass above for the same iso.right/iso.up). HOME_DOWN_PX was
 // picked by rendering the built page at 1440x900 and measuring the island's rendered bounding box
 // against the title/toolbar bands - see NOTES-gnhf.md.
-const HOME_DOWN_PX = 80;
+const HOME_DOWN_PX = 35;
 function homeTarget() {
   const dy = (HOME_DOWN_PX * frameScale(HOME.zoom)) / COS2_EL;
   return [HOME.at[0], HOME.at[1] + dy, HOME.at[2]];
@@ -245,7 +245,7 @@ function homeTarget() {
 function panelOffset(zoom) {
   const stageW = stageEl.clientWidth || innerWidth || 1440, stageH = stageEl.clientHeight || innerHeight || 900;
   const mobile = stageW <= 600;
-  const clear = (mobile ? stageH * 0.45 : Math.min(380, stageW * 0.92)) / 2;
+  const clear = (mobile ? stageH * 0.5 : Math.min(380, stageW * 0.92)) / 2;
   const scale = frameScale(zoom);
   const v = new THREE.Vector3();
   return mobile ? v.addScaledVector(iso.up, -clear * scale) : v.addScaledVector(iso.right, clear * scale);
@@ -349,7 +349,6 @@ function refreshUI(dt) {
   $('bTicker').textContent = measure.text ? measure.text.toUpperCase() : `${walkers.filter((p) => !p.hidden && p.pi < p.path.length).length} ON THE LANES`;
   $('cVisits').textContent = stats.visits;
   $('cOut').textContent = walkers.filter((p) => !p.hidden).length;
-  $('cBus').textContent = busPath.wait > 0 ? 'STOPPED' : 'MOVING';
   setBar('Light', envNow.sunInt / 2.4, wx.time === 'day' ? 'Sunlit' : wx.time === 'dusk' ? 'Lamps' : 'Moonlight');
   setBar('Breeze', env.wind / 0.9, env.wind > 0.5 ? 'Windy' : env.wind > 0.25 ? 'Light' : 'Still');
   setBar('Bustle', walkers.filter((p) => !p.hidden).length / walkers.length, '');
@@ -361,7 +360,7 @@ function refreshUI(dt) {
 /* ------------------------------------------------------------------ */
 // A steeper look-down than the usual isometric angle, so the board reads as a map
 // The usual isometric view of a floating island; zoom in close enough to see people in the lanes
-iso.configure({ drag: 'pan', panBounds: { x0: -BW / 2, x1: BW / 2, z0: -BD / 2, z1: BD / 2 }, zoomMin: 0.1, zoomMax: HOME.zoom, zoom: 1, viewH: 170, target: homeTarget(), baseW: BASE_W, baseH: BASE_H, tallW: TALL_W }); // zoomMax: never further out than the whole island
+iso.configure({ drag: 'pan', panBounds: { x0: -BW / 2, x1: BW / 2, z0: -BD / 2, z1: BD / 2 }, zoomMin: 0.1, zoomMax: HOME.zoom, zoom: 1, viewH: BASE_H, target: homeTarget(), baseW: BASE_W, baseH: BASE_H, tallW: TALL_W }); // zoomMax: never further out than the whole island
 view.raw = true; fitViewport(); // open in smooth full-resolution 3D; set directly, since clicking the hidden button would start audio without a user gesture
 uiHooks.stamp = () => `D${day.n} ${clockStr()}`;
 uiHooks.wxMsg = { clear: 'Clear skies over the valley.', breezy: 'A breeze along the ridge.', drizzle: 'Soft rain on the brick lanes.' };
@@ -379,7 +378,6 @@ function simulate(h) {
   const night = day.hour >= 20.5 || day.hour < 6;
   for (const p of walkers) walkerAI(p, h, night);
   updateBells(h, loop.simTime);
-  updateBus(h);
 }
 // Close in on a site (by click or by zooming) and the houses round it sink to stubs; zoom out and they rise
 function updateCollapse(dt) {
@@ -395,11 +393,12 @@ function updateCollapse(dt) {
 function draw(dt) { const h = Math.min(0.1, dt || 1 / 60); updateFly(h); updateOrbit(h); updateCollapse(h); placeLabels(); placePins(); updateCompass(); updateScaleBar(); }
 document.querySelector('.stage-hint').textContent = 'Drag to move · Shift-drag or ◀ ▶ to turn · Scroll to zoom · Click anything';
 bake(S);
-configureShadow(90, 400);
+configureShadow(130, 500);
 setTime('day', true);
-log('KIRTIPUR', 'Kirtipur at true scale, floating: 440 × 460 m of the old town, every building from OpenStreetMap at its GHSL height, the ground from SRTM heights, smoothed.', 'info');
+log('KIRTIPUR', `Kirtipur at true scale, floating: ${BX1 - BX0} × ${BZ1 - BZ0} m of the old town, every building from OpenStreetMap at its GHSL height, the ground from SRTM heights, smoothed.`, 'info');
 // #place=<key> deep link or landing walkthrough: if a place is given in the hash,
 // land on it. Otherwise start the walkthrough on Chilancho.
+iso.update(0, stageEl.clientWidth || innerWidth || 1440, stageEl.clientHeight || innerHeight || 900);
 (() => {
   const m = /^#place=(\w+)$/.exec(location.hash);
   const target = (m && focusOf(m[1])) || focusOf('stupa');
@@ -409,4 +408,4 @@ log('KIRTIPUR', 'Kirtipur at true scale, floating: 440 × 460 m of the old town,
   COLLAPSE.focus.value.set(target.view[0], target.view[2], target.collapse * U);
   COLLAPSE.amount.value = 1;
 })();
-startLoop({ simulate, ui: refreshUI, draw, debug: { day, walkers, stats, measure, bus, busPath } });
+startLoop({ simulate, ui: refreshUI, draw, debug: { day, walkers, stats, measure } });

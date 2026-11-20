@@ -53,14 +53,15 @@
       <aside class="panel" id="panel" tabindex="-1" role="dialog" aria-modal="false" aria-labelledby="panelName" hidden>
         <div class="panel-head">
           <button type="button" class="panel-nav" id="panelPrev" aria-label="Previous place">&larr;</button>
-          <div class="panel-title-wrap">
+          <div class="panel-title-wrap" id="panelTitleWrap">
             <span class="panel-badge" id="panelBadge">Walkthrough</span>
             <h2 id="panelName"></h2>
           </div>
+          <button type="button" class="panel-toggle" id="panelToggle" aria-expanded="true" aria-controls="panelBody" aria-label="Collapse place description"><span aria-hidden="true">&#9662;</span></button>
           <button type="button" class="panel-nav" id="panelNext" aria-label="Next place">&rarr;</button>
           <button type="button" class="panel-close" id="panelClose" aria-label="Close place panel">&times;</button>
         </div>
-        <div class="panel-body">
+        <div class="panel-body" id="panelBody">
           <p class="panel-history" id="panelHistory"></p>
           <p class="panel-look" id="panelLook"></p>
           <div class="panel-photos" id="panelPhotos"></div>
