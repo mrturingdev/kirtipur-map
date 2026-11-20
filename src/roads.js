@@ -44,7 +44,8 @@ function surfaceOf(r) {
   return ['flags', r.w || 2.6]; // old-town paths and footways: stone flags
 }
 const LIFT = { earth: 0.022, concrete: 0.026, flags: 0.03, steps: 0.032, asphalt: 0.036 }; // world units, so crossings never flicker
-const _ribbons = { flags: [], steps: [], asphalt: [], concrete: [], earth: [] };
+const _ribbonsCore = { flags: [], steps: [], asphalt: [], concrete: [], earth: [] };
+const _ribbonsOuter = { flags: [], steps: [], asphalt: [], concrete: [], earth: [] };
 for (const r of MAP.roads) {
   const [kind, wM] = surfaceOf(r), half = wM / 2;
   // Resample the line every metre, inside the board
@@ -55,10 +56,15 @@ for (const r of MAP.roads) {
   }
   pts.push([r.p[r.p.length - 2], r.p[r.p.length - 1]]);
   const inB = (p) => p[0] > BX0 + 0.5 && p[0] < BX1 - 0.5 && p[1] > BZ0 + 0.5 && p[1] < BZ1 - 0.5;
-  let run = [];
-  const flush = () => { if (run.length > 1) _ribbons[kind].push({ run, half }); run = []; };
-  for (const p of pts) { if (inB(p)) run.push(p); else flush(); }
-  flush();
+  let runC = [], runO = [];
+  const flushC = () => { if (runC.length > 1) _ribbonsCore[kind].push({ run: runC, half }); runC = []; };
+  const flushO = () => { if (runO.length > 1) _ribbonsOuter[kind].push({ run: runO, half }); runO = []; };
+  for (const p of pts) {
+    if (!inB(p)) { flushC(); flushO(); continue; }
+    if (inCore(p[0], p[1])) { runC.push(p); flushO(); }
+    else { runO.push(p); flushC(); }
+  }
+  flushC(); flushO();
 }
 // The unit normal (in map metres) of a resampled lane run at point i
 function laneNormal(run, i) {
@@ -66,7 +72,7 @@ function laneNormal(run, i) {
   return [-tz / tl, tx / tl];
 }
 // Triangle strips draped on the ground, one mesh per call: u across the width, v along in tiles of len metres
-function ribbonMesh(list, tex, len, lift) {
+function ribbonMesh(list, tex, len, lift, parent = scene) {
   const pos = [], uv = [], idx = [];
   for (const { run, half } of list) {
     let dist = 0;
@@ -87,12 +93,14 @@ function ribbonMesh(list, tex, len, lift) {
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setIndex(idx); g.computeVertexNormals();
   const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide }));
-  m.receiveShadow = true; scene.add(m);
+  m.receiveShadow = true; parent.add(m);
   return m;
 }
-const roadMeshes = Object.entries(_ribbons).map(([kind, list]) => ribbonMesh(list, SURF[kind].tex, SURF[kind].len, LIFT[kind]));
-// Round iron manhole covers along the paved lanes and the road
-for (const kind of ['flags', 'asphalt']) for (const { run, half } of _ribbons[kind]) for (let i = 11; i < run.length; i += 23) {
+const roadMeshes = Object.entries(_ribbonsCore).map(([kind, list]) => ribbonMesh(list, SURF[kind].tex, SURF[kind].len, LIFT[kind], scene));
+const outerRoadMeshes = Object.entries(_ribbonsOuter).map(([kind, list]) => ribbonMesh(list, SURF[kind].tex, SURF[kind].len, LIFT[kind], outerOnlyGroup));
+const _ribbons = _ribbonsCore;
+// Round iron manhole covers along the paved lanes and the road in the core old town
+for (const kind of ['flags', 'asphalt']) for (const { run, half } of _ribbonsCore[kind]) for (let i = 11; i < run.length; i += 23) {
   const [nx, nz] = laneNormal(run, i), wx_ = wX(run[i][0] + nx * half * 0.3), wz_ = wZ(run[i][1] + nz * half * 0.3);
   cyl(0.38 * U, 0.38 * U, 0.02, 10, '#403a35', wx_, groundY(wx_, wz_) + 0.045, wz_, S, false);
 }
@@ -113,7 +121,7 @@ for (const kind of ['flags', 'asphalt']) for (const { run, half } of _ribbons[ki
   const sets = { brick: { tex: brickTex, cols: [PI.brick, PI.common] }, flags: { tex: flagTex, cols: [PI.paved, PI.school] } };
   for (const set of Object.values(sets)) {
     const pos = [], uv = [], idx = [];
-    const X = (i) => wX(BX0 + i * CELL), Z = (j) => wZ(BZ0 + j * CELL), C = (i, j) => CH[j * (NX + 1) + i] + 0.012;
+    const X = (i) => wX(CX0 + i * CELL), Z = (j) => wZ(CZ0 + j * CELL), C = (i, j) => CH[j * (NX + 1) + i] + 0.012;
     for (let j = 0; j < NZ; j++) for (let i = 0; i < NX; i++) {
       if (!set.cols.includes(COL[j * NX + i])) continue;
       const v = pos.length / 3;

@@ -21,6 +21,30 @@ html, body { overflow: hidden; }
 .map-labels .lbl.major { font-size: 15px; font-style: normal; font-variant: small-caps; color: #73281b; }
 .map-labels .lbl.minor { font-size: 10px; opacity: 0.85; }
 .map-labels .lbl.water { color: #1f5f7a; }
+.map-labels .lbl.area-chip {
+  pointer-events: auto; cursor: pointer; font: 600 11px/1.15 var(--f-body); font-style: normal;
+  padding: 3px 8px; border-radius: 999px; color: var(--ink);
+  background: rgba(255, 250, 242, 0.82); border: 1px solid var(--rule);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.18); text-shadow: none; letter-spacing: 0.01em;
+  transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.map-labels .lbl.area-chip:hover, .map-labels .lbl.area-chip:focus-visible { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); outline: none; }
+.map-labels .lbl.area-chip.revealed { background: transparent; border-color: transparent; box-shadow: none; font: italic 600 11px/1.1 Georgia, 'Times New Roman', serif; color: #403a35; text-shadow: 0 0 2px #fffaf2, 0 0 4px #fffaf2; padding: 0; }
+:root[data-theme="dark"] .map-labels .lbl.area-chip:not(.revealed), .map-labels.night .lbl.area-chip:not(.revealed) { background: rgba(35, 31, 38, 0.84); color: #f2e2d0; border-color: rgba(242, 226, 208, 0.25); }
+:root[data-theme="dark"] .map-labels .lbl.area-chip.revealed, .map-labels.night .lbl.area-chip.revealed { color: #f2e2d0; text-shadow: 0 0 3px #110e12; }
+.area-banner {
+  position: absolute; left: 50%; top: 44px; transform: translateX(-50%); z-index: 2;
+  display: flex; align-items: center; gap: 8px; max-width: min(460px, calc(100vw - 110px));
+  padding: 6px 10px; border-radius: 8px; background: var(--card); color: var(--ink);
+  border: 1px solid var(--rule); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22);
+}
+.area-banner[hidden] { display: none; }
+.area-banner-text { display: flex; flex-direction: column; min-width: 0; }
+.area-banner-text strong { font: 700 12px/1.2 var(--f-pixel); color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.area-banner-text span { font: 11px/1.3 var(--f-body); color: var(--muted); }
+.area-reset { flex: none; font-size: 10px; padding: 4px 7px; }
+.area-close { flex: none; border: 1px solid var(--rule); background: var(--card-2); color: var(--ink); border-radius: 5px; width: 24px; height: 24px; font: 600 14px/1 var(--f-mono); cursor: pointer; }
+.area-close:hover { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .map-labels .lbl.measure { font: 600 12px/1.2 ui-monospace, monospace; font-style: normal; color: #fffaf2; background: #73281b; padding: 2px 6px; text-shadow: none; }
 :root[data-theme="dark"] .map-labels .lbl:not(.measure), .map-labels.night .lbl:not(.measure) { color: #f2e2d0; text-shadow: 0 0 3px #110e12; }
 /* The credit / metric line is hidden as requested */
@@ -42,8 +66,11 @@ html, body { overflow: hidden; }
      everything positioned inside #stage, including this map's own UI - to the screen's top
      58%; same selector specificity, so this later rule wins. */
   .stage { height: 100vh; height: 100dvh; min-height: 0; }
-  .insta-badge { bottom: var(--toolbar-clear, 132px); right: 8px; font-size: 10px; padding: 3px 7px; }
+  .map-title { top: max(8px, env(safe-area-inset-top)); font-size: 13px; padding: 4px 10px; }
+  .insta-badge { bottom: var(--toolbar-clear, 118px); right: 8px; font-size: 10px; padding: 3px 7px; }
   .map-labels .lbl.major { font-size: 12px; } .map-labels .lbl.minor { font-size: 9px; }
+  .area-banner { top: auto; bottom: var(--toolbar-clear, 118px); left: 8px; right: 8px; transform: none; max-width: none; z-index: 3; }
+  .stage:has(.area-banner:not([hidden])) .insta-badge { opacity: 0; pointer-events: none; }
 }
 /* Map furniture: numbered pins on the six places, a north arrow, a scale bar in true metres
    (updated every frame from src/hud.js, 1 unit = 4 m) and a small static legend. */
@@ -70,21 +97,58 @@ html, body { overflow: hidden; }
   .legend { display: none; top: 38px; }
   .legend.open { display: block; }
 }
+/* Floating navigation pad: zoom in/out, turn left/right, and 4-way pan D-pad (desktop & mobile) */
+.map-nav {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%); z-index: 3;
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 6px;
+  background: var(--card); border: 1px solid var(--rule); border-radius: 9px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.24); pointer-events: auto;
+  transition: right 0.2s ease;
+}
+.map-nav-row { display: grid; grid-template-columns: repeat(2, 32px); gap: 4px; }
+.map-dpad { display: grid; grid-template-columns: repeat(3, 28px); grid-template-rows: repeat(3, 28px); gap: 3px; }
+.map-nav .btn {
+  display: grid; place-items: center; padding: 0; width: 100%; height: 30px;
+  font: 700 14px/1 var(--f-mono); border-radius: 6px; touch-action: manipulation;
+}
+.map-dpad .btn { height: 28px; font-size: 11px; }
+.map-nav-home { font-size: 13px !important; }
+@media (min-width: 601px) {
+  .stage:has(.panel:not([hidden])) .map-nav,
+  .stage:has(.panel:not([hidden])) .compass,
+  .stage:has(.panel:not([hidden])) .scalebar,
+  .stage:has(.panel:not([hidden])) .insta-badge { right: calc(min(380px, 92vw) + 10px); }
+}
+@media (min-width: 601px) and (max-width: 960px) {
+  .panel { width: min(330px, 44vw); }
+  .stage:has(.panel:not([hidden])) .map-nav,
+  .stage:has(.panel:not([hidden])) .compass,
+  .stage:has(.panel:not([hidden])) .scalebar,
+  .stage:has(.panel:not([hidden])) .insta-badge { right: calc(min(330px, 44vw) + 10px); }
+}
+@media (max-width: 600px) {
+  .map-nav { top: 92px; right: 8px; transform: none; padding: 5px; gap: 5px; }
+  .map-nav-row { grid-template-columns: repeat(2, 30px); gap: 3px; }
+  .map-nav .btn { height: 28px; font-size: 13px; }
+  .map-dpad { grid-template-columns: repeat(3, 25px); grid-template-rows: repeat(3, 25px); gap: 2px; }
+  .map-dpad .btn { height: 25px; font-size: 10px; }
+}
 /* Compact controls: a single horizontally-scrolling strip along the bottom edge, so its height
    stays predictable regardless of viewport width (see .map-credit's fixed clearance above it). */
-.map-toolbar { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 3; display: flex; align-items: center; gap: 5px; padding: 5px 6px; overflow-x: auto; background: var(--card); border: 1px solid var(--rule); border-radius: 7px; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.25); }
+.map-toolbar { position: absolute; left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); z-index: 3; display: flex; align-items: center; gap: 5px; padding: 5px 6px; overflow-x: auto; background: var(--card); border: 1px solid var(--rule); border-radius: 7px; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.25); }
 .map-toolbar .seg { flex: none; gap: 4px; }
 .time-ctl { flex: none; display: flex; align-items: center; gap: 5px; }
 .time-ctl output { font: 600 11px var(--f-mono); color: var(--ink); min-width: 5ch; text-align: right; }
-.time-ctl input { width: 110px; accent-color: var(--accent); }
-.map-toolbar .btn, .map-toolbar .seg button { flex: none; white-space: nowrap; font-size: 11px; padding: 5px 8px; }
-/* Phones: every control must be reachable without sideways scrolling, so wrap to as many rows as
-   needed instead of scrolling, and drop the Places segment's name text (its numbers, matching the
-   on-map pins, plus each button's aria-label, are enough to pick a place). */
+.time-ctl input { width: 104px; accent-color: var(--accent); }
+.map-toolbar .btn, .map-toolbar .seg button { flex: none; white-space: nowrap; font-size: 11px; padding: 5px 8px; touch-action: manipulation; }
+/* Phones: every control must be reachable without sideways scrolling, so wrap compactly into
+   at most 2-3 clean rows, dropping the Places segment's name text (numbers match on-map pins). */
 @media (max-width: 600px) {
-  .map-toolbar { flex-wrap: wrap; overflow-x: visible; justify-content: center; bottom: 8px; }
+  .map-toolbar { flex-wrap: wrap; overflow-x: visible; justify-content: center; gap: 4px; padding: 4px 5px; }
   .map-toolbar .place-name { display: none; }
-  .map-toolbar .seg button { padding: 5px 7px; }
+  .map-toolbar .btn, .map-toolbar .seg button { font-size: 10.5px; padding: 4px 6px; }
+  .map-toolbar .seg { gap: 3px; }
+  .time-ctl input { width: 84px; }
 }
 /* Place detail panel: right side on desktop, a bottom sheet (leaving the focused landmark
    visible above it) on phones. Opened/closed from src/panel.js via src/hud.js's actOn/goHome. */
@@ -111,8 +175,8 @@ html, body { overflow: hidden; }
 .panel-photo figcaption a { color: var(--accent); }
 @media (max-width: 600px) {
   .panel {
-    top: auto; left: 8px; right: 8px; bottom: var(--toolbar-clear, 132px); width: auto;
-    max-height: min(38vh, calc(100% - var(--toolbar-clear, 132px) - 52px));
+    top: auto; left: 8px; right: 8px; bottom: var(--toolbar-clear, 118px); width: auto;
+    max-height: min(36vh, calc(100% - var(--toolbar-clear, 118px) - 52px));
     border: 1px solid var(--rule); border-radius: 10px;
     box-shadow: 0 2px 16px rgba(0, 0, 0, 0.3);
     z-index: 3;
@@ -123,4 +187,49 @@ html, body { overflow: hidden; }
   .panel.collapsed .panel-head { border-bottom: 0; padding: 7px 8px; }
   .panel.collapsed .panel-toggle span { transform: rotate(180deg); }
   .stage:has(.panel:not([hidden])) .insta-badge { opacity: 0; pointer-events: none; }
+}
+@media (max-height: 500px) and (max-width: 900px) {
+  .panel {
+    top: 8px; left: auto; right: 8px; bottom: var(--toolbar-clear, 56px);
+    width: min(300px, 44vw); max-height: none;
+    border: 1px solid var(--rule); border-radius: 10px; z-index: 3;
+  }
+  .map-nav { top: 88px; }
+  .stage:has(.panel:not([hidden])) .map-nav { right: calc(min(300px, 44vw) + 16px); }
+}
+/* Content protection: global selection lock (inputs remain selectable), print shield, and toast */
+html, body, .app, .stage, .panel, .map-toolbar, .map-nav, .legend, .compass, .scalebar, .map-title, .map-labels, .map-pins, .insta-badge {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+input, textarea, select, option {
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+}
+@media print {
+  body * { visibility: hidden !important; }
+}
+.security-toast {
+  position: fixed; bottom: 72px; left: 50%; transform: translateX(-50%); z-index: 99999;
+  display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+  background: rgba(23, 19, 15, 0.94); border: 1px solid rgba(196, 81, 52, 0.55);
+  border-radius: 9999px; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  color: #fffaf2; font-family: var(--f-body); pointer-events: none;
+  animation: security-toast-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes security-toast-in {
+  from { opacity: 0; transform: translate(-50%, 15px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+.security-toast-icon { font-size: 16px; line-height: 1; }
+.security-toast-body { display: flex; flex-direction: column; }
+.security-toast-title { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #fa9e7d; }
+.security-toast-desc { font-size: 12px; color: #f2e2d0; }
+@media (max-width: 600px) {
+  .security-toast { top: 52px; bottom: auto; max-width: calc(100vw - 24px); }
 }

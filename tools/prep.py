@@ -15,8 +15,9 @@ import xml.etree.ElementTree as ET
 
 LAT0, LON0 = 27.67943, 85.27652          # Bagh Bhairab
 MX = 111320 * math.cos(math.radians(LAT0)); MZ = 110574
-X0, X1, Z0, Z1 = -340, 300, -280, 440     # board, metres
-STEP = 20                                 # elevation sample spacing, metres
+CORE = [-240, 200, -130, 330]             # old town core (metres, clear on load)
+X0, X1, Z0, Z1 = -840, 1120, -1040, 1160  # full Kirtipur board (metres)
+STEP = 40                                 # elevation sample spacing, metres
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 def xy(lat, lon): return ((lon - LON0) * MX, -(lat - LAT0) * MZ)
@@ -79,7 +80,7 @@ def main(osm):
         if not t: continue
         x, z = xy(float(n.get('lat')), float(n.get('lon')))
         if not inside(x, z): continue
-        kind = t.get('shop') and 'shop' or t.get('amenity') or t.get('historic') or t.get('man_made') or t.get('tourism') or ('tole' if t.get('name') and len(t) <= 3 else None)
+        kind = t.get('shop') and 'shop' or t.get('amenity') or t.get('historic') or t.get('man_made') or t.get('tourism') or (t.get('place') and 'tole') or ('tole' if t.get('name') and len(t) <= 3 else None)
         if kind: POI.append({'x': r1(x), 'z': r1(z), 't': kind, 'n': t.get('name:en') or t.get('name') or ''})
     for w in root.iter('way'):
         t = tags(w)
@@ -128,7 +129,9 @@ def main(osm):
     N = [r1(v) for n in best for v in nodes[n]]
     Ed = sorted({(min(idx[a], idx[b]), max(idx[a], idx[b])) for a in best for b in adj[a] if b in idx})
     E = elevations()
-    data = {'bounds': [X0, X1, Z0, Z1], 'elev': E, 'buildings': B, 'roads': R, 'water': W, 'green': G, 'areas': C, 'shelters': SH, 'pois': POI,
+    core_elev_path = os.path.join(HERE, 'elev_core.json')
+    EC = json.load(open(core_elev_path)) if os.path.exists(core_elev_path) else None
+    data = {'bounds': [X0, X1, Z0, Z1], 'core': CORE, 'elev': E, 'elevCore': EC, 'buildings': B, 'roads': R, 'water': W, 'green': G, 'areas': C, 'shelters': SH, 'pois': POI,
             'graph': {'n': N, 'e': [v for e in Ed for v in e]}}
     out = os.path.join(HERE, '..', 'src', 'mapdata.js')
     with open(out, 'w') as f:

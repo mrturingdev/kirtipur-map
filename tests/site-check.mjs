@@ -211,7 +211,7 @@ const furniture = await desktop.evaluate(() => ({
   scaleWidth: parseFloat(document.getElementById('scaleFill')?.style.width || '0'),
   scaleLabel: document.getElementById('scaleLabel')?.textContent || '',
   legendRows: document.querySelectorAll('.legend p').length,
-  toolbarBtns: ['btnHome', 'btnWalkthrough', 'btnZoomIn', 'btnZoomOut', 'btnTurnL', 'btnTurnR', 'btnMeasure', 'btnLabels', 'btnThemeUI'].every((id) => {
+  toolbarBtns: ['btnHome', 'btnWalkthrough', 'btnZoomIn', 'btnZoomOut', 'btnTurnL', 'btnTurnR', 'btnPanN', 'btnPanS', 'btnPanW', 'btnPanE', 'btnPanCenter', 'btnMeasure', 'btnLabels', 'btnThemeUI'].every((id) => {
     const el = document.getElementById(id); if (!el) return false;
     const r = el.getBoundingClientRect(); return r.width * r.height > 0;
   })
@@ -226,6 +226,21 @@ await desktop.waitForTimeout(800);
 const compassAfter = await desktop.evaluate(() => document.getElementById('compassNeedle').style.transform);
 if (compassAfter === furniture.compassBefore) fail('desktop light: north arrow did not turn after Turn right');
 
+// Zoom & Pan controls check on desktop: #btnZoomIn reduces scale bar metres, #btnPanE shifts pins, #btnPanCenter returns home
+await desktop.click('#btnZoomIn');
+await desktop.click('#btnZoomIn');
+await desktop.waitForTimeout(500);
+const zoomCheck = await desktop.evaluate(() => ({
+  scaleLabel: document.getElementById('scaleLabel')?.textContent || '',
+  pinBefore: document.querySelector('.pin[data-v="bhairab"]')?.style.transform || ''
+}));
+await desktop.click('#btnPanE');
+await desktop.waitForTimeout(500);
+const panCheck = await desktop.evaluate(() => document.querySelector('.pin[data-v="bhairab"]')?.style.transform || '');
+if (panCheck === zoomCheck.pinBefore) fail('desktop light: D-pad Pan right did not move the map');
+await desktop.click('#btnPanCenter');
+await desktop.waitForTimeout(700);
+
 console.log('  checking triggers (keys, bar, pins)...');
 await placesByTrigger(desktop, 'desktop light keys', byKey, outDir);
 await placesByTrigger(desktop, 'desktop light place bar', byBar);
@@ -239,6 +254,78 @@ if (wtState.hidden) fail('Walkthrough button did not open place panel');
 if (wtState.name !== 'Chilancho') fail(`Walkthrough opened "${wtState.name}", expected "Chilancho"`);
 await desktop.keyboard.press('Escape');
 await desktop.waitForTimeout(300);
+
+// Default view mode is Kirtipur Hill (with valley fog around the hill); Full Kirtipur shows all remaining areas with fog + click-to-reveal
+const initScope = await desktop.evaluate(() => ({
+  hillPressed: document.querySelector('#segScope button[data-v="hill"]')?.getAttribute('aria-pressed'),
+  fullPressed: document.querySelector('#segScope button[data-v="full"]')?.getAttribute('aria-pressed'),
+  anyChipVisible: [...document.querySelectorAll('.lbl.area-chip')].some((el) => el.style.visibility !== 'hidden')
+}));
+if (initScope.hillPressed !== 'true' || initScope.fullPressed !== 'false' || initScope.anyChipVisible) {
+  fail(`desktop light: Kirtipur Hill should be default (${JSON.stringify(initScope)})`);
+}
+
+await desktop.click('#segScope button[data-v="full"]');
+await desktop.waitForTimeout(900);
+const nagaonBefore = await desktop.evaluate(() => ({
+  fullPressed: document.querySelector('#segScope button[data-v="full"]')?.getAttribute('aria-pressed'),
+  chips: document.querySelectorAll('.lbl.area-chip').length,
+  chipsVisible: [...document.querySelectorAll('.lbl.area-chip')].filter((el) => el.style.visibility !== 'hidden').length
+}));
+if (nagaonBefore.fullPressed !== 'true' || nagaonBefore.chips < 8 || nagaonBefore.chipsVisible < 5) {
+  fail(`desktop light: Full Kirtipur toggle failed (${JSON.stringify(nagaonBefore)})`);
+}
+await desktop.screenshot({ path: join(outDir, 'whole-island-full-desktop-light.png'), timeout: 120000 });
+await desktop.locator('.lbl.area-chip', { hasText: 'Nagaon' }).click();
+await desktop.waitForTimeout(900);
+const nagaonAfter = await desktop.evaluate(() => ({
+  bannerHidden: document.getElementById('areaBanner')?.hidden !== false,
+  bannerName: document.getElementById('areaBannerName')?.textContent || '',
+  chipRevealed: [...document.querySelectorAll('.lbl.area-chip')].find((el) => el.textContent === 'Nagaon')?.classList.contains('revealed')
+}));
+if (nagaonAfter.bannerHidden || !nagaonAfter.bannerName.includes('Nagaon')) {
+  fail(`desktop light: clicking Nagaon did not show area banner (${JSON.stringify(nagaonAfter)})`);
+}
+if (!nagaonAfter.chipRevealed) fail('desktop light: Nagaon fog did not reveal on click');
+await desktop.screenshot({ path: join(outDir, 'area-nagaon-revealed.png'), timeout: 120000 });
+await desktop.click('#btnResetFog');
+await desktop.waitForTimeout(900);
+const resetCheck = await desktop.evaluate(() => ({
+  bannerHidden: document.getElementById('areaBanner')?.hidden !== false,
+  anyRevealed: [...document.querySelectorAll('.lbl.area-chip')].some((el) => el.classList.contains('revealed'))
+}));
+if (!resetCheck.bannerHidden || resetCheck.anyRevealed) {
+  fail(`desktop light: Reset fog did not restore fog (${JSON.stringify(resetCheck)})`);
+}
+await desktop.click('#segScope button[data-v="hill"]');
+await desktop.waitForTimeout(900);
+
+// Content protection check: fingerprint active, selection locked, F12/Ctrl+U blocked with toast, right-click blocked
+const secState = await desktop.evaluate(() => {
+  const app = document.querySelector('.app');
+  const cs = getComputedStyle(document.body);
+  const inp = document.getElementById('timeSlider');
+  return {
+    protectedAttr: app?.getAttribute('data-protected-content'),
+    fingerprint: app?.getAttribute('data-security-fingerprint') || '',
+    userSelect: cs.userSelect || cs.webkitUserSelect,
+    inputSelect: inp ? (getComputedStyle(inp).userSelect || getComputedStyle(inp).webkitUserSelect) : ''
+  };
+});
+if (secState.protectedAttr !== 'true' || !secState.fingerprint.startsWith('KM-SEC-')) {
+  fail(`desktop light: content protection not active (${JSON.stringify(secState)})`);
+}
+if (secState.userSelect !== 'none') fail(`desktop light: body userSelect is "${secState.userSelect}", expected "none"`);
+await desktop.keyboard.press('F12');
+await desktop.waitForTimeout(100);
+const toastText = await desktop.evaluate(() => document.getElementById('security-protection-toast')?.textContent || '');
+if (!toastText.includes('Protected Content')) fail('desktop light: F12 did not trigger security toast');
+const ctxBlocked = await desktop.evaluate(() => {
+  const ev = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+  document.body.dispatchEvent(ev);
+  return ev.defaultPrevented;
+});
+if (!ctxBlocked) fail('desktop light: contextmenu was not prevented');
 
 await desktop.context().close();
 
@@ -279,6 +366,19 @@ if (mExp.hidden || mExp.collapsed || mExp.expandedAttr !== 'true' || !mExp.bodyV
 }
 if (mExp.panelBottom > mExp.toolbarTop) {
   fail(`mobile light: expanded panel bottom (${mExp.panelBottom}) overlaps toolbar top (${mExp.toolbarTop})`);
+}
+const mobileNavCheck = await mobile.evaluate(() => {
+  const nav = document.querySelector('.map-nav')?.getBoundingClientRect();
+  const panel = document.getElementById('panel')?.getBoundingClientRect();
+  const btns = ['btnZoomIn', 'btnZoomOut', 'btnTurnL', 'btnTurnR', 'btnPanN', 'btnPanS', 'btnPanW', 'btnPanE', 'btnPanCenter'].every((id) => {
+    const r = document.getElementById(id)?.getBoundingClientRect();
+    return r && r.width * r.height > 0;
+  });
+  return { btns, navBottom: Math.round(nav?.bottom || 0), panelTop: Math.round(panel?.top || 0) };
+});
+if (!mobileNavCheck.btns) fail('mobile light: one or more .map-nav controls are not visible');
+if (mobileNavCheck.navBottom > mobileNavCheck.panelTop) {
+  fail(`mobile light: .map-nav bottom (${mobileNavCheck.navBottom}) overlaps expanded panel top (${mobileNavCheck.panelTop})`);
 }
 await mobile.screenshot({ path: join(outDir, 'place-stupa-mobile-expanded.png'), timeout: 120000 });
 await mobile.click('#panelToggle');

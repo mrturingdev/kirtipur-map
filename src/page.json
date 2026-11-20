@@ -37,6 +37,8 @@
     "life.js",
     "walk.js",
     "panel.js",
-    "hud.js"
+    "fog.js",
+    "hud.js",
+    "security.js"
   ]
 }

@@ -65,8 +65,9 @@ sfx.define(({ ok, tone }) => ({
 /* ------------------------------------------------------------------ */
 const labelBox = $('mapLabels');
 const LABELS = [];
-function label(text, x, y, z, cls) {
-  const el = document.createElement('span');
+function label(text, x, y, z, cls, onClick) {
+  const el = document.createElement(onClick ? 'button' : 'span');
+  if (onClick) { el.type = 'button'; el.addEventListener('click', onClick); }
   el.className = 'lbl ' + (cls || '');
   el.textContent = text;
   labelBox.appendChild(el);
@@ -78,7 +79,11 @@ const atMap = (x, z, lift = 2) => [wX(x), groundY(wX(x), wZ(z)) + lift, wZ(z)];
 // The six focus places: a big label over each
 const siteGround = (F_) => (F_.key === 'pukhu' ? PUKHU.F.position.y : groundY(wX(F_.at[0]), wZ(F_.at[1])));
 for (const F_ of FOCUS) label(F_.name, wX(F_.at[0]), siteGround(F_) + F_.h * U + 1.5, wZ(F_.at[1]), F_.key === 'pukhu' ? 'major water' : 'major');
-for (const a of MAP.areas) if (a.n && a.t !== 'school' && !/Baghbhairab|Uma/.test(a.n)) { const f = footprint(a.p); label(a.n, ...atMap(f.cx, f.cz, 3), 'minor'); }
+for (const A of OUTER_AREAS) {
+  const L = label(A.name, ...atMap(A.at[0], A.at[1], 10), 'area-chip', () => focusOuterArea(A));
+  L.area = A;
+}
+for (const a of MAP.areas) if (a.n && a.t !== 'school' && !/Baghbhairab|Uma/.test(a.n)) { const f = footprint(a.p); const L = label(a.n, ...atMap(f.cx, f.cz, 3), 'minor'); L.mx = f.cx; L.mz = f.cz; }
 for (const T of TOLES) label(T.n, ...atMap(T.x, T.z, 2.5), 'minor tole'); // tole names along the stretch
 const measureLbl = label('', 0, 0, 0, 'measure');
 const _pv = new THREE.Vector3();
@@ -89,11 +94,14 @@ function placeLabels() {
   const W = labelBox.clientWidth, H = labelBox.clientHeight;
   if (measure.text) { measureLbl.v.set((measure.a[0] + measure.b[0]) / 2, Math.max(measure.a[1], measure.b[1]) + POLE + 1.2, (measure.a[2] + measure.b[2]) / 2); measureLbl.el.textContent = measure.text; }
   measureLbl.el.hidden = !measure.text;
-  // Place in priority order (measure, the six places, then the small names): a small name that would cover
+  // Place in priority order (measure, the six places, then outer area chips & small names): a small name that would cover
   // one already placed is left out; a big one steps up clear of it, at most twice so it stays by its place
   const placed = [], hit = (a) => placed.find((b) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0);
   for (const L of LABEL_ORDER) {
     if (L.el.hidden) continue;
+    if (L.area && mapScope !== 'full') { L.el.style.visibility = 'hidden'; continue; }
+    if (L.mx !== undefined && (mapScope !== 'full' ? !inCore(L.mx, L.mz) : !isFogRevealed(L.mx, L.mz))) { L.el.style.visibility = 'hidden'; continue; }
+    if (L.area) L.el.classList.toggle('revealed', isFogRevealed(L.area.at[0], L.area.at[1]));
     if (!L.w || L.txt !== L.el.textContent) { L.w = L.el.offsetWidth; L.h = L.el.offsetHeight; L.txt = L.el.textContent; }
     _pv.copy(L.v).project(iso.cam);
     const x = (_pv.x + 1) / 2 * W, r = { x0: x - L.w / 2 - 2, x1: x + L.w / 2 + 2, y0: 0, y1: (1 - _pv.y) / 2 * H };
@@ -175,17 +183,48 @@ function updateScaleBar() {
 // touching _engine: a capture-phase pointerdown listener on the same #stage element stops the
 // event before it reaches ui.js's bubble-phase listener, whenever the real target is one of our
 // own controls (any button, or anywhere inside the place panel, which also sits inside #stage).
-stageEl.addEventListener('pointerdown', (e) => { if (e.target.closest('button, input, .panel, a')) e.stopPropagation(); }, { capture: true });
+stageEl.addEventListener('pointerdown', (e) => { if (e.target.closest('button, input, .panel, .map-nav, .area-banner, a')) e.stopPropagation(); }, { capture: true });
+const areaBanner = $('areaBanner'), areaBannerName = $('areaBannerName'), areaBannerDesc = $('areaBannerDesc');
+function showAreaBanner(area, elevM) {
+  areaBannerName.textContent = `${area.name} · ${elevM} m`;
+  areaBannerDesc.textContent = area.desc;
+  areaBanner.hidden = false;
+}
+function hideAreaBanner() { areaBanner.hidden = true; }
+function focusOuterArea(area, clickM) {
+  if (mapScope !== 'full') setMapScope('full', false);
+  sfx.unlock();
+  const tx = clickM ? clickM[0] : area.at[0], tz = clickM ? clickM[1] : area.at[1];
+  const wx_ = wX(tx), wz_ = wZ(tz), wy_ = groundY(wx_, wz_);
+  const elevM = Math.round(ELEV0 + wy_ / U);
+  revealFogAt(tx, tz, area.radius || 175);
+  for (const b of document.querySelectorAll('#segPlaces button')) b.setAttribute('aria-pressed', 'false');
+  history.replaceState(null, '', location.pathname + location.search);
+  closePlacePanel();
+  showAreaBanner(area, elevM);
+  flyTo([wx_, wy_ + 2, wz_], area.zoom || 0.24);
+  log(area.name.toUpperCase(), `${area.desc} (${elevM} m above sea level)`, 'info');
+}
+$('btnResetFog').addEventListener('click', () => { resetFog(); hideAreaBanner(); goHome(); });
+$('areaBannerClose').addEventListener('click', hideAreaBanner);
+
 function actOn(kind, r, point, quiet) {
   if (!quiet) sfx.unlock(); // skipped for the #place=<key> deep-link's programmatic open: no user
   if (kind === 'ground') {  // gesture yet to unlock audio on, and Chrome warns on the console for it
     if (measure.on) { measureClick(point); sfx.tick(); return; }
     const x = mX(point.x), z = mZ(point.z), h = Math.round(ELEV0 + groundY(point.x, point.z) / U);
+    if (!inCore(x, z)) {
+      if (mapScope !== 'full') return;
+      const area = resolveOuterArea(x, z);
+      focusOuterArea(area, Math.hypot(area.at[0] - x, area.at[1] - z) <= 140 ? null : [x, z]);
+      return;
+    }
     const near = PLACES.map((P) => [P, Math.hypot(P.x - x, P.z - z)]).sort((a, b) => a[1] - b[1])[0];
     log('MAP', `${h} m above sea level here, ${Math.round(near[1])} m from ${near[0].name}.`, 'info');
     return;
   }
   if (kind === 'site') {
+    hideAreaBanner();
     const off = panelOffset(r.zoom);
     flyTo([r.view[0] + off.x, r.view[1] + off.y, r.view[2] + off.z], r.zoom);
     if (!quiet && r.key === 'bhairab') ringBell();
@@ -210,31 +249,28 @@ for (const F_ of FOCUS) {
   clickables.push({ mesh: m, kind: 'site', ref: F_ });
 }
 // The camera glides to a close-up and back; any drag or pinch takes over from it
-const HOME = { at: [0, -16, 0], zoom: 1 };
+let mapScope = 'hill';
+const HOME_HILL = { at: [0, -16, 0], zoom: 1, baseW: 190, baseH: 170, tallW: 190, downPx: 80, pan: { x0: wX(CX0), x1: wX(CX1), z0: wZ(CZ0), z1: wZ(CZ1) } };
+const HOME_FULL = { at: [BCX, -14, BCZ], zoom: 1, baseW: 540, baseH: 460, tallW: 520, downPx: 20, pan: { x0: wX(BX0), x1: wX(BX1), z0: wZ(BZ0), z1: wZ(BZ1) } };
+const scopeCfg = () => (mapScope === 'hill' ? HOME_HILL : HOME_FULL);
 const fly = { goal: null, zoom: 1 };
-function flyTo(at, zoom) { fly.goal = new THREE.Vector3(...at); fly.zoom = zoom; }
-// Screen-space framing helpers: BASE_W/BASE_H/TALL_W mirror the same numbers passed to
+function flyTo(at, zoom) { zoomGoal = null; panGoal = null; panVel.set(0, 0); fly.goal = new THREE.Vector3(...at); fly.zoom = zoom; }
+// Screen-space framing helpers: baseW/baseH/tallW mirror the same numbers passed to
 // iso.configure below (camera.js's own base-view-height formula), so a target's final, settled
 // viewH - and from it, world units per CSS pixel at the current viewport - can be computed before
 // the camera glide there actually finishes.
-const BASE_W = 280, BASE_H = 235, TALL_W = 260;
 const COS2_EL = Math.cos(iso.el) ** 2; // a pure world-Y nudge is foreshortened by this at the fixed isometric look-down angle
 function frameScale(zoom) {
+  const cfg = scopeCfg();
   const stageW = stageEl.clientWidth || innerWidth || 1440, stageH = stageEl.clientHeight || innerHeight || 900;
   const aspect = stageW / stageH;
-  const base = Math.max(BASE_H, (aspect < 1 && TALL_W ? TALL_W : BASE_W) / aspect);
+  const base = Math.max(cfg.baseH, (aspect < 1 && cfg.tallW ? cfg.tallW : cfg.baseW) / aspect);
   return (base * zoom) / stageH; // world units per CSS pixel, isotropic for this orthographic camera
 }
-// Host review: the whole-island view sat high, crowding the on-map title, with a large empty
-// band above the bottom toolbar. A pure world-Y nudge to the home target moves the whole scene
-// down on screen with no left/right drift at any turn angle (right's Y-component is always zero
-// for this camera basis; see updateCompass above for the same iso.right/iso.up). HOME_DOWN_PX was
-// picked by rendering the built page at 1440x900 and measuring the island's rendered bounding box
-// against the title/toolbar bands - see NOTES-gnhf.md.
-const HOME_DOWN_PX = 35;
 function homeTarget() {
-  const dy = (HOME_DOWN_PX * frameScale(HOME.zoom)) / COS2_EL;
-  return [HOME.at[0], HOME.at[1] + dy, HOME.at[2]];
+  const cfg = scopeCfg();
+  const dy = (cfg.downPx * frameScale(cfg.zoom)) / COS2_EL;
+  return [cfg.at[0], cfg.at[1] + dy, cfg.at[2]];
 }
 // Host review: with the place panel open, a focused landmark rendered dead centre of the whole
 // canvas, right against the panel's left edge (desktop) or under the bottom sheet (phones).
@@ -245,10 +281,70 @@ function homeTarget() {
 function panelOffset(zoom) {
   const stageW = stageEl.clientWidth || innerWidth || 1440, stageH = stageEl.clientHeight || innerHeight || 900;
   const mobile = stageW <= 600;
-  const clear = (mobile ? stageH * 0.5 : Math.min(380, stageW * 0.92)) / 2;
+  const clear = (mobile ? stageH * 0.46 : Math.min(380, stageW * 0.92)) / 2;
   const scale = frameScale(zoom);
   const v = new THREE.Vector3();
   return mobile ? v.addScaledVector(iso.up, -clear * scale) : v.addScaledVector(iso.right, clear * scale);
+}
+let zoomGoal = null, holdZoom = 0, panGoal = null;
+const holdPan = [0, 0], panVel = new THREE.Vector2(), keysHeld = new Set();
+let dragTrack = null;
+
+function clampPan(x, z) {
+  const B = iso.panBounds;
+  return B ? [clamp(x, B.x0, B.x1), clamp(z, B.z0, B.z1)] : [x, z];
+}
+function panByScreen(rightWorld, upWorld, smoothGoal = false) {
+  const upSin = Math.sin(iso.el) || 0.577;
+  const fx = -Math.cos(iso.az) / upSin, fz = -Math.sin(iso.az) / upSin;
+  const dx = iso.right.x * rightWorld + fx * upWorld;
+  const dz = iso.right.z * rightWorld + fz * upWorld;
+  const base = smoothGoal ? (panGoal || iso.target) : iso.target;
+  const [nx, nz] = clampPan(base.x + dx, base.z + dz);
+  if (smoothGoal && !motion.reduced) {
+    panGoal = new THREE.Vector3(nx, base.y, nz);
+  } else {
+    panGoal = null;
+    iso.target.x = nx; iso.target.z = nz;
+  }
+}
+function stepZoom(factor) {
+  fly.goal = null; panVel.set(0, 0);
+  const base = zoomGoal ?? iso.zoom;
+  zoomGoal = clamp(base * factor, iso.zoomMin, iso.zoomMax);
+  if (motion.reduced) { iso.zoom = zoomGoal; zoomGoal = null; }
+}
+function updateNav(dt) {
+  if (zoomGoal !== null) {
+    const k = motion.reduced ? 1 : 1 - Math.exp(-dt * 10);
+    iso.zoom += (zoomGoal - iso.zoom) * k;
+    if (Math.abs(zoomGoal - iso.zoom) < 0.001) { iso.zoom = zoomGoal; zoomGoal = null; }
+  }
+  if (holdZoom) {
+    fly.goal = null; zoomGoal = null;
+    iso.zoom = clamp(iso.zoom * Math.exp(holdZoom * dt * 1.45), iso.zoomMin, iso.zoomMax);
+  }
+  if (panGoal) {
+    const k = motion.reduced ? 1 : 1 - Math.exp(-dt * 10);
+    iso.target.lerp(panGoal, k);
+    if (iso.target.distanceTo(panGoal) < 0.02) { iso.target.copy(panGoal); panGoal = null; }
+  }
+  let kx = holdPan[0], kz = holdPan[1];
+  if (keysHeld.has('a')) kx -= 1;
+  if (keysHeld.has('d')) kx += 1;
+  if (keysHeld.has('w') || keysHeld.has('arrowup')) kz += 1;
+  if (keysHeld.has('s') || keysHeld.has('arrowdown')) kz -= 1;
+  if (kx || kz) {
+    fly.goal = null; panGoal = null; panVel.set(0, 0);
+    const spd = iso.viewH * (keysHeld.has('shift') ? 1.25 : 0.72) * dt;
+    const len = Math.hypot(kx, kz) || 1;
+    panByScreen((kx / len) * spd, (kz / len) * spd, false);
+  } else if (panVel.lengthSq() > 0.05 && !fly.goal && !orbit.on && !dragTrack) {
+    const [nx, nz] = clampPan(iso.target.x + panVel.x * dt, iso.target.z + panVel.y * dt);
+    iso.target.x = nx; iso.target.z = nz;
+    panVel.multiplyScalar(motion.reduced ? 0 : Math.exp(-dt * 7));
+    if (panVel.lengthSq() < 0.05) panVel.set(0, 0);
+  }
 }
 function updateFly(dt) {
   if (!fly.goal) return;
@@ -257,8 +353,49 @@ function updateFly(dt) {
   iso.zoom += (fly.zoom - iso.zoom) * k;
   if (iso.target.distanceTo(fly.goal) < 0.01 && Math.abs(iso.zoom - fly.zoom) < 0.001) fly.goal = null;
 }
-$('stage').addEventListener('pointermove', (e) => { if (e.buttons) fly.goal = null; });
-$('stage').addEventListener('wheel', () => { fly.goal = null; }, { passive: true });
+stageEl.addEventListener('pointerdown', (e) => {
+  if (e.target.closest('button, input, .panel, a')) return;
+  fly.goal = null; panGoal = null; panVel.set(0, 0);
+  dragTrack = { x: iso.target.x, z: iso.target.z, vx: 0, vz: 0, t: performance.now() };
+});
+stageEl.addEventListener('pointermove', (e) => {
+  if (e.buttons) { fly.goal = null; panGoal = null; }
+  if (!dragTrack || !e.buttons) return;
+  const now = performance.now(), dt = Math.max(0.008, (now - dragTrack.t) / 1000);
+  const vx = (iso.target.x - dragTrack.x) / dt, vz = (iso.target.z - dragTrack.z) / dt;
+  dragTrack.vx = dragTrack.vx * 0.55 + vx * 0.45;
+  dragTrack.vz = dragTrack.vz * 0.55 + vz * 0.45;
+  dragTrack.x = iso.target.x; dragTrack.z = iso.target.z; dragTrack.t = now;
+});
+function releaseDragTrack() {
+  if (!dragTrack) return;
+  if (!motion.reduced && performance.now() - dragTrack.t < 90 && Math.hypot(dragTrack.vx, dragTrack.vz) > 1.5) {
+    panVel.set(clamp(dragTrack.vx, -180, 180), clamp(dragTrack.vz, -180, 180));
+  }
+  dragTrack = null;
+}
+stageEl.addEventListener('pointerup', releaseDragTrack);
+stageEl.addEventListener('pointercancel', releaseDragTrack);
+stageEl.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  fly.goal = null; zoomGoal = null; panGoal = null; panVel.set(0, 0);
+  const oldZ = iso.zoom;
+  const factor = Math.exp(clamp(e.deltaY, -120, 120) * 0.0022);
+  const newZ = clamp(oldZ * factor, iso.zoomMin, iso.zoomMax);
+  if (newZ === oldZ) return;
+  const r = canvas.getBoundingClientRect();
+  if (r.width > 0 && r.height > 0) {
+    const nx = ((e.clientX - r.left) / r.width) * 2 - 1;
+    const ny = 1 - ((e.clientY - r.top) / r.height) * 2;
+    const aspect = r.width / r.height;
+    const cfg = scopeCfg();
+    const base = Math.max(cfg.baseH, (aspect < 1 && cfg.tallW ? cfg.tallW : cfg.baseW) / aspect);
+    const dViewH = base * (newZ - oldZ);
+    panByScreen(-nx * (dViewH * aspect * 0.5), -ny * (dViewH * 0.5), false);
+  }
+  iso.zoom = newZ;
+}, { capture: true, passive: false });
 // Double-click a spot for a cinematic orbit: glide in to it, one slow eased turn all the way round,
 // then settle on the nearest quarter view. Any drag, wheel, key or button press ends it there.
 const orbit = { on: false, left: 0 }, _ray = new THREE.Raycaster(), _ndc = new THREE.Vector2();
@@ -284,17 +421,34 @@ function updateOrbit(dt) {
   iso.az += step; iso.azTarget = iso.az; orbit.left -= step;
   if (orbit.left <= 0) endOrbit();
 }
-function goHome() { flyTo(homeTarget(), HOME.zoom); for (const b of document.querySelectorAll('#segPlaces button')) b.setAttribute('aria-pressed', 'false'); history.replaceState(null, '', location.pathname + location.search); closePlacePanel(); }
+function goHome() { const cfg = scopeCfg(); hideAreaBanner(); flyTo(homeTarget(), cfg.zoom); for (const b of document.querySelectorAll('#segPlaces button')) b.setAttribute('aria-pressed', 'false'); history.replaceState(null, '', location.pathname + location.search); closePlacePanel(); }
+function setMapScope(scope, flyHome = true) {
+  mapScope = scope === 'hill' ? 'hill' : 'full';
+  coreOnlyGroup.visible = mapScope === 'hill';
+  outerOnlyGroup.visible = mapScope === 'full';
+  for (const b of document.querySelectorAll('#segScope button')) b.setAttribute('aria-pressed', String(b.dataset.v === mapScope));
+  const cfg = scopeCfg();
+  iso.configure({ panBounds: cfg.pan, baseW: cfg.baseW, baseH: cfg.baseH, tallW: cfg.tallW });
+  if (mapScope === 'hill') hideAreaBanner();
+  if (flyHome) goHome();
+}
+for (const b of document.querySelectorAll('#segScope button')) b.addEventListener('click', () => setMapScope(b.dataset.v, true));
 $('btnHome').addEventListener('click', goHome);
 $('btnWalkthrough').addEventListener('click', () => actOn('site', focusOf('stupa')));
 // The Places bar, and keys 1-6, jump to each focus place
 for (const b of document.querySelectorAll('#segPlaces button')) b.addEventListener('click', () => actOn('site', focusOf(b.dataset.v)));
 document.addEventListener('keydown', (e) => {
   if (e.target.closest && e.target.closest('input, textarea')) return;
+  const kl = (e.key || '').toLowerCase();
+  keysHeld.add(kl);
   if (e.key === 'Escape') goHome();
+  if (e.key === '+' || e.key === '=') stepZoom(0.76);
+  if (e.key === '-' || e.key === '_') stepZoom(1.32);
   const k = '123456'.indexOf(e.key);
   if (k >= 0) actOn('site', FOCUS[k]);
 });
+document.addEventListener('keyup', (e) => keysHeld.delete((e.key || '').toLowerCase()));
+window.addEventListener('blur', () => { keysHeld.clear(); holdZoom = 0; holdPan[0] = holdPan[1] = 0; });
 const rowOf = (p) => ({ ref: p, color: p.color, label: p.name, sub: p.sub, state: () => p.state, hot: () => !p.hidden && p.pi < p.path.length });
 buildCast([
   { head: 'Temples' }, ...walkers.filter((p) => p.role === 'priest' || p.role === 'devotee').map(rowOf),
@@ -320,12 +474,43 @@ $('btnLegend').addEventListener('click', () => {
 // Fewer houses: no on-map control any more (decision 6), so just left at its old default
 // share, evenly thinned (the house collapse around a focused place is unaffected by this).
 thinHouses(0.2);
-// Zoom in/out and turn left/right: the same step a wheel tick or a quarter-turn already uses
-// (src/engine/ui.js), as new compact buttons on the map instead of only drag/scroll/pinch.
-$('btnZoomIn').addEventListener('click', () => { fly.goal = null; iso.zoom = clamp(iso.zoom * 0.926, iso.zoomMin, iso.zoomMax); });
-$('btnZoomOut').addEventListener('click', () => { fly.goal = null; iso.zoom = clamp(iso.zoom * 1.08, iso.zoomMin, iso.zoomMax); });
+// Zoom in/out (tap for smooth step, hold for continuous), turn left/right, and 4-way D-pad pan
+function bindHoldZoom(id, dir, tapFactor) {
+  const el = $(id);
+  let timer = 0, held = false;
+  const stop = () => { clearTimeout(timer); holdZoom = 0; };
+  el.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    held = false;
+    timer = setTimeout(() => { held = true; holdZoom = dir; }, 180);
+  });
+  for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(ev, stop);
+  el.addEventListener('click', () => { if (!held) stepZoom(tapFactor); held = false; });
+}
+bindHoldZoom('btnZoomIn', -1, 0.72);
+bindHoldZoom('btnZoomOut', 1, 1.38);
 $('btnTurnL').addEventListener('click', () => { fly.goal = null; iso.stepTurn(-1); });
 $('btnTurnR').addEventListener('click', () => { fly.goal = null; iso.stepTurn(1); });
+function bindHoldPan(id, dx, dz) {
+  const el = $(id);
+  let timer = 0, held = false;
+  const stop = () => { clearTimeout(timer); holdPan[0] = 0; holdPan[1] = 0; };
+  el.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    held = false;
+    timer = setTimeout(() => { held = true; holdPan[0] = dx; holdPan[1] = dz; }, 160);
+  });
+  for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(ev, stop);
+  el.addEventListener('click', () => {
+    if (!held) { fly.goal = null; panVel.set(0, 0); panByScreen(dx * iso.viewH * 0.22, dz * iso.viewH * 0.22, true); }
+    held = false;
+  });
+}
+bindHoldPan('btnPanN', 0, 1);
+bindHoldPan('btnPanS', 0, -1);
+bindHoldPan('btnPanW', -1, 0);
+bindHoldPan('btnPanE', 1, 0);
+$('btnPanCenter').addEventListener('click', goHome);
 // On-map theme toggle: reuses the engine's own hidden #btnTheme (click() fires its listener
 // and applyMapBg together, see slice 1), just mirroring its label onto a visible button.
 const btnThemeUI = $('btnThemeUI');
@@ -360,14 +545,17 @@ function refreshUI(dt) {
 /* ------------------------------------------------------------------ */
 // A steeper look-down than the usual isometric angle, so the board reads as a map
 // The usual isometric view of a floating island; zoom in close enough to see people in the lanes
-iso.configure({ drag: 'pan', panBounds: { x0: -BW / 2, x1: BW / 2, z0: -BD / 2, z1: BD / 2 }, zoomMin: 0.1, zoomMax: HOME.zoom, zoom: 1, viewH: BASE_H, target: homeTarget(), baseW: BASE_W, baseH: BASE_H, tallW: TALL_W }); // zoomMax: never further out than the whole island
+iso.cam.near = -800; iso.cam.far = 1600; iso.cam.updateProjectionMatrix();
+iso.configure({ drag: 'pan', panBounds: HOME_HILL.pan, zoomMin: 0.08, zoomMax: HOME_HILL.zoom, zoom: 1, viewH: HOME_HILL.baseH, target: homeTarget(), baseW: HOME_HILL.baseW, baseH: HOME_HILL.baseH, tallW: HOME_HILL.tallW }); // zoomMax: never further out than the whole island
+setMapScope('hill', false);
 view.raw = true; fitViewport(); // open in smooth full-resolution 3D; set directly, since clicking the hidden button would start audio without a user gesture
 uiHooks.stamp = () => `D${day.n} ${clockStr()}`;
 uiHooks.wxMsg = { clear: 'Clear skies over the valley.', breezy: 'A breeze along the ridge.', drizzle: 'Soft rain on the brick lanes.' };
 envHooks.timeMsg = { dusk: 'Dusk over Kirtipur.', night: 'Night. Lamps in the lanes.' };
 envHooks.rain = { n: 700, x: 70, z: 70, top: 40, floor: -60, keepOut: null };
 envHooks.lights = (L) => {
-  sun.position.multiplyScalar(3); // the board is wide: keep the shadow camera's sun well back
+  sun.target.position.set(iso.target.x, 0, iso.target.z);
+  sun.position.multiplyScalar(4).add(sun.target.position);
   for (const m of HOUSE_MATS) m.emissiveIntensity = L * 0.3; // lamplight in the house windows after dark
   nightLights(L);
 };
@@ -390,12 +578,13 @@ function updateCollapse(dt) {
 
   COLLAPSE.amount.value += (want - COLLAPSE.amount.value) * (motion.reduced ? 1 : 1 - Math.exp(-dt * 5));
 }
-function draw(dt) { const h = Math.min(0.1, dt || 1 / 60); updateFly(h); updateOrbit(h); updateCollapse(h); placeLabels(); placePins(); updateCompass(); updateScaleBar(); }
+function draw(dt) { const h = Math.min(0.1, dt || 1 / 60); updateFly(h); updateNav(h); updateOrbit(h); updateCollapse(h); updateFog(h); placeLabels(); placePins(); updateCompass(); updateScaleBar(); }
 document.querySelector('.stage-hint').textContent = 'Drag to move · Shift-drag or ◀ ▶ to turn · Scroll to zoom · Click anything';
 bake(S);
-configureShadow(130, 500);
+bake(outerS);
+configureShadow(140, 600);
 setTime('day', true);
-log('KIRTIPUR', `Kirtipur at true scale, floating: ${BX1 - BX0} × ${BZ1 - BZ0} m of the old town, every building from OpenStreetMap at its GHSL height, the ground from SRTM heights, smoothed.`, 'info');
+log('KIRTIPUR', `Kirtipur at true scale, floating: ${BX1 - BX0} × ${BZ1 - BZ0} m across Kirtipur (clear ${CX1 - CX0} × ${CZ1 - CZ0} m Old Town, click any fogged area to reveal & focus).`, 'info');
 // #place=<key> deep link or landing walkthrough: if a place is given in the hash,
 // land on it. Otherwise start the walkthrough on Chilancho.
 iso.update(0, stageEl.clientWidth || innerWidth || 1440, stageEl.clientHeight || innerHeight || 900);

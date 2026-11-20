@@ -13,16 +13,40 @@ function nearestNode(x, z) { // map metres
   for (let i = 0; i < NN; i++) { const d = Math.hypot(GN[2 * i] - x, GN[2 * i + 1] - z); if (d < bd) { bd = d; best = i; } }
   return best;
 }
-// Dijkstra over a few hundred nodes; returns the node list and its length in metres
+// Min-heap Dijkstra over the OSM lane graph; returns the node list and its length in metres
 function route(a, b) {
-  const dist = new Float64Array(NN).fill(Infinity), prev = new Int32Array(NN).fill(-1), done = new Uint8Array(NN);
+  const dist = new Float64Array(NN).fill(Infinity), prev = new Int32Array(NN).fill(-1);
+  const heap = [[0, a]];
   dist[a] = 0;
-  for (;;) {
-    let u = -1;
-    for (let i = 0; i < NN; i++) if (!done[i] && dist[i] < Infinity && (u < 0 || dist[i] < dist[u])) u = i;
-    if (u < 0 || u === b) break;
-    done[u] = 1;
-    for (const [v, d] of ADJ[u]) if (dist[u] + d < dist[v]) { dist[v] = dist[u] + d; prev[v] = u; }
+  while (heap.length) {
+    const [du, u] = heap[0];
+    const last = heap.pop();
+    if (heap.length) {
+      heap[0] = last;
+      for (let i = 0, n = heap.length; ;) {
+        let m = i, l = 2 * i + 1, r = l + 1;
+        if (l < n && heap[l][0] < heap[m][0]) m = l;
+        if (r < n && heap[r][0] < heap[m][0]) m = r;
+        if (m === i) break;
+        [heap[i], heap[m]] = [heap[m], heap[i]];
+        i = m;
+      }
+    }
+    if (du > dist[u]) continue;
+    if (u === b) break;
+    for (const [v, d] of ADJ[u]) {
+      const nd = du + d;
+      if (nd < dist[v]) {
+        dist[v] = nd; prev[v] = u;
+        heap.push([nd, v]);
+        for (let i = heap.length - 1; i > 0;) {
+          const p = (i - 1) >> 1;
+          if (heap[p][0] <= heap[i][0]) break;
+          [heap[p], heap[i]] = [heap[i], heap[p]];
+          i = p;
+        }
+      }
+    }
   }
   const path = [];
   for (let v = b; v >= 0; v = prev[v]) path.unshift(v);

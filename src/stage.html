@@ -1,4 +1,12 @@
       <h1 class="map-title">Our Kirtipur</h1>
+      <div class="area-banner" id="areaBanner" hidden>
+        <div class="area-banner-text">
+          <strong id="areaBannerName"></strong>
+          <span id="areaBannerDesc"></span>
+        </div>
+        <button type="button" class="btn area-reset" id="btnResetFog">Reset fog</button>
+        <button type="button" class="area-close" id="areaBannerClose" aria-label="Close area banner">&times;</button>
+      </div>
       <div class="map-labels" id="mapLabels" aria-hidden="true"></div>
       <div class="map-pins" id="mapPins" aria-hidden="true"></div>
       <button type="button" class="legend-toggle" id="btnLegend" aria-expanded="false" aria-controls="legend">Legend</button>
@@ -26,7 +34,30 @@
         </svg>
         <span>mrturingdev.diorama</span>
       </a>
+      <div class="map-nav" role="group" aria-label="Zoom, turn, and pan controls">
+        <div class="map-nav-row">
+          <button type="button" class="btn" id="btnZoomIn" aria-label="Zoom in" title="Zoom in (+)">+</button>
+          <button type="button" class="btn" id="btnZoomOut" aria-label="Zoom out" title="Zoom out (-)">&minus;</button>
+          <button type="button" class="btn" id="btnTurnL" aria-label="Turn left" title="Turn left (Q)">&#8634;</button>
+          <button type="button" class="btn" id="btnTurnR" aria-label="Turn right" title="Turn right (E)">&#8635;</button>
+        </div>
+        <div class="map-dpad" role="group" aria-label="Move around map">
+          <span></span>
+          <button type="button" class="btn" id="btnPanN" aria-label="Move up" title="Move up (W / Up)">&#9650;</button>
+          <span></span>
+          <button type="button" class="btn" id="btnPanW" aria-label="Move left" title="Move left (A)">&#9664;</button>
+          <button type="button" class="btn map-nav-home" id="btnPanCenter" aria-label="Reset view" title="Whole island">&#8982;</button>
+          <button type="button" class="btn" id="btnPanE" aria-label="Move right" title="Move right (D)">&#9654;</button>
+          <span></span>
+          <button type="button" class="btn" id="btnPanS" aria-label="Move down" title="Move down (S / Down)">&#9660;</button>
+          <span></span>
+        </div>
+      </div>
       <div class="map-toolbar" role="group" aria-label="Map controls">
+        <div class="seg" id="segScope" role="group" aria-label="Map view">
+          <button type="button" data-v="hill" aria-pressed="true">Kirtipur Hill</button>
+          <button type="button" data-v="full" aria-pressed="false">Full Kirtipur</button>
+        </div>
         <button type="button" class="btn" id="btnHome">Whole island</button>
         <button type="button" class="btn" id="btnWalkthrough">Walkthrough</button>
         <div class="seg" id="segPlaces" role="group" aria-label="Places">
@@ -37,10 +68,6 @@
           <button type="button" data-v="lohan" aria-pressed="false" aria-label="Lohan Dega"><b>5</b><span class="place-name"> Lohan</span></button>
           <button type="button" data-v="stupa" aria-pressed="false" aria-label="Chilancho"><b>6</b><span class="place-name"> Chilancho</span></button>
         </div>
-        <button type="button" class="btn" id="btnZoomIn" aria-label="Zoom in">+</button>
-        <button type="button" class="btn" id="btnZoomOut" aria-label="Zoom out">&minus;</button>
-        <button type="button" class="btn" id="btnTurnL" aria-label="Turn left">&#9664;</button>
-        <button type="button" class="btn" id="btnTurnR" aria-label="Turn right">&#9654;</button>
         <button type="button" class="btn" id="btnMeasure" aria-pressed="false">Measure</button>
         <button type="button" class="btn" id="btnLabels" aria-pressed="true">Labels</button>
         <button type="button" class="btn" id="btnThemeUI">Dark theme</button>

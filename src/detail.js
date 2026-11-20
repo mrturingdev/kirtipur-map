@@ -14,7 +14,7 @@ const inAnySite = (x, z) => Object.values(SITES).some((S_) => inPoly(S_.poly, x,
 
 /* Pati: brick plinth, wooden posts, a tiled roof with a red frill, on its OSM outline */
 for (const sh of MAP.shelters) {
-  const f = footprint(sh.p), g = atMapPoint(f.cx, f.cz, f.ang), L = Math.max(3, f.long), W = Math.max(2.4, f.short);
+  const f = footprint(sh.p), g = atMapPoint(f.cx, f.cz, f.ang, inCore(f.cx, f.cz) ? S : outerS), L = Math.max(3, f.long), W = Math.max(2.4, f.short);
   footing(g, L, W, '#9e3b26');
   box(L, 0.6, W, '#b5603f', 0, 0.3, 0, g);
   for (let x = -L / 2 + 0.3; x <= L / 2 - 0.2; x += Math.max(1.2, (L - 0.6) / Math.round((L - 0.6) / 1.6))) for (const s of [-1, 1]) box(0.2, 2.2, 0.2, WOOD, x, 1.7, s * (W / 2 - 0.3), g);

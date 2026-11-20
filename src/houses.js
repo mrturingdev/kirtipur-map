@@ -75,8 +75,9 @@ const houseLatMat = houseMat('hlat', () => new THREE.MeshLambertMaterial({ emiss
 }) }));
 const nearPlace = (x, z) => Object.values(SITES).some((S_) => Math.hypot(x - S_.at[0], z - S_.at[1]) < 60); // map metres
 
-const _parts = {}; // material key -> [{ geo, rank }]
+const _parts = {}, _outerParts = {}; // material key -> [{ geo, rank }]
 const _M = new THREE.Matrix4(), _P = new THREE.Matrix4(), _R = new THREE.Matrix4(), _hcen = [0, 0, 0]; // _hcen: the house's centre x, z and base y
+let _bucket = _parts;
 // A box part in a house's own frame (metres, +x along its long side), dropped into its material's bucket
 function part(key, mat, w, h, d, x, y, z, rx, rank, rep = 0) {
   const geo = new THREE.BoxGeometry(w, h, d);
@@ -87,10 +88,11 @@ function part(key, mat, w, h, d, x, y, z, rx, rank, rep = 0) {
   const hc = new Float32Array(geo.attributes.position.count * 3);
   for (let i = 0; i < hc.length; i += 3) { hc[i] = _hcen[0]; hc[i + 1] = _hcen[1]; hc[i + 2] = _hcen[2]; }
   geo.setAttribute('hc', new THREE.BufferAttribute(hc, 3));
-  (_parts[key] = _parts[key] || { mat, list: [] }).list.push({ geo, rank });
+  (_bucket[key] = _bucket[key] || { mat, list: [] }).list.push({ geo, rank });
 }
 for (const H of houseList) {
   const { fp, hm, lo, hi, hsh, rank } = H;
+  _bucket = inCore(fp.cx, fp.cz) ? _parts : _outerParts;
   const L = fp.long, W = fp.short, fl = Math.max(2, Math.min(8, Math.round(hm / FLOOR))), base = (hi - lo) / U + 0.1;
   const top = base + fl * FLOOR;
   _hcen[0] = wX(fp.cx); _hcen[1] = wZ(fp.cz); _hcen[2] = lo;
@@ -135,21 +137,26 @@ for (const H of houseList) {
   }
 }
 // One mesh per material, its parts sorted by rank (highest first)
-const houseSets = Object.values(_parts).map(({ mat, list }) => {
-  list.sort((a, b) => b.rank - a.rank);
-  const geo = mergeGeometries(list.map((p) => p.geo));
-  let n = 0;
-  const ends = list.map((p) => (n += p.geo.index.count));
-  const m = new THREE.Mesh(geo, mat);
-  m.castShadow = m.receiveShadow = true;
-  m.customDepthMaterial = collapseDepth; // shadows sink with the houses
-  scene.add(m);
-  return { m, ranks: list.map((p) => p.rank), ends };
-});
+function buildHouseSets(parts, parent) {
+  return Object.values(parts).map(({ mat, list }) => {
+    list.sort((a, b) => b.rank - a.rank);
+    const geo = mergeGeometries(list.map((p) => p.geo));
+    let n = 0;
+    const ends = list.map((p) => (n += p.geo.index.count));
+    const m = new THREE.Mesh(geo, mat);
+    m.castShadow = m.receiveShadow = true;
+    m.customDepthMaterial = collapseDepth; // shadows sink with the houses
+    parent.add(m);
+    return { m, ranks: list.map((p) => p.rank), ends };
+  });
+}
+const houseSets = buildHouseSets(_parts, scene);
+const outerHouseSets = buildHouseSets(_outerParts, outerOnlyGroup);
+const allHouseSets = [...houseSets, ...outerHouseSets];
 const HOUSES_TOTAL = houseList.length;
 // Leave out `share` (0..1) of the houses, those with the lowest ranks; returns how many are drawn
 function thinHouses(share) {
-  for (const H of houseSets) {
+  for (const H of allHouseSets) {
     let k = 0;
     while (k < H.ranks.length && H.ranks[k] >= share) k++;
     H.m.geometry.setDrawRange(0, k ? H.ends[k - 1] : 0);

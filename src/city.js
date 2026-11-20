@@ -7,8 +7,8 @@ function placeModel(g, fp, scale = 1) {
 }
 
 // A group in metres at a map point, turned by yaw (radians, map frame), standing on the ground
-function atMapPoint(x, z, yaw = 0) {
-  const g = group(wX(x), groundY(wX(x), wZ(z)), wZ(z), S);
+function atMapPoint(x, z, yaw = 0, parent = S) {
+  const g = group(wX(x), groundY(wX(x), wZ(z)), wZ(z), parent);
   g.rotation.y = -yaw; g.scale.setScalar(U);
   return g;
 }
@@ -187,7 +187,7 @@ const ICON = 1.3; // the iconic sites are built a little larger than true size
 /* The small shrines and dyochhen on the map: little pagodas           */
 /* ------------------------------------------------------------------ */
 for (const fp of shrines) {
-  const w = Math.max(2.5, fp.short), g = placeModel(group(0, 0, 0, S), fp);
+  const w = Math.max(2.5, fp.short), g = placeModel(group(0, 0, 0, inCore(fp.cx, fp.cz) ? S : outerS), fp);
   footing(g, w, w, '#b5ada4');
   box(w, 0.5, w, '#cfc8c0', 0, 0.25, 0, g);
   box(w * 0.6, 2, w * 0.6, '#9e3b26', 0, 1.5, 0, g);
@@ -199,7 +199,7 @@ for (const fp of shrines) {
 
 // Chaityas: a small white stupa on a step, at each mapped spot
 for (const fp of chaityas) {
-  const g = placeModel(group(0, 0, 0, S), fp), w = Math.max(1.2, fp.long);
+  const g = placeModel(group(0, 0, 0, inCore(fp.cx, fp.cz) ? S : outerS), fp), w = Math.max(1.2, fp.long);
   footing(g, w, w, '#cfc8c0');
   box(w, 0.6, w, '#e6e1dc', 0, 0.3, 0, g);
   const d = new THREE.Mesh(new THREE.SphereGeometry(w * 0.38, 8, 5, 0, TAU, 0, Math.PI / 2), lam('#fffaf2'));
