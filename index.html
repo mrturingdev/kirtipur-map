@@ -406,6 +406,18 @@ html, body { overflow: hidden; }
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.24); pointer-events: auto;
   transition: right 0.2s ease;
 }
+.map-nav-toggle {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%;
+  padding: 3px 6px; font: 700 10px/1.2 var(--f-mono); text-transform: uppercase; letter-spacing: 0.04em;
+  background: var(--card-2); color: var(--ink); border: 1px solid var(--rule); border-radius: 6px;
+  cursor: pointer; touch-action: manipulation;
+}
+.map-nav-toggle:hover, .map-nav-toggle:focus-visible { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); outline: none; }
+.map-nav-toggle i { font-style: normal; display: inline-block; transition: transform 0.15s ease; }
+.map-nav-body { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.map-nav.collapsed { padding: 4px; gap: 0; }
+.map-nav.collapsed .map-nav-body { display: none; }
+.map-nav.collapsed .map-nav-toggle i { transform: rotate(-90deg); }
 .map-nav-row { display: grid; grid-template-columns: repeat(2, 32px); gap: 4px; }
 .map-dpad { display: grid; grid-template-columns: repeat(3, 28px); grid-template-rows: repeat(3, 28px); gap: 3px; }
 .map-nav .btn {
@@ -604,23 +616,28 @@ input, textarea, select, option {
         </svg>
         <span>mrturingdev.diorama</span>
       </a>
-      <div class="map-nav" role="group" aria-label="Zoom, turn, and pan controls">
-        <div class="map-nav-row">
-          <button type="button" class="btn" id="btnZoomIn" aria-label="Zoom in" title="Zoom in (+)">+</button>
-          <button type="button" class="btn" id="btnZoomOut" aria-label="Zoom out" title="Zoom out (-)">&minus;</button>
-          <button type="button" class="btn" id="btnTurnL" aria-label="Turn left" title="Turn left (Q)">&#8634;</button>
-          <button type="button" class="btn" id="btnTurnR" aria-label="Turn right" title="Turn right (E)">&#8635;</button>
-        </div>
-        <div class="map-dpad" role="group" aria-label="Move around map">
-          <span></span>
-          <button type="button" class="btn" id="btnPanN" aria-label="Move up" title="Move up (W / Up)">&#9650;</button>
-          <span></span>
-          <button type="button" class="btn" id="btnPanW" aria-label="Move left" title="Move left (A)">&#9664;</button>
-          <button type="button" class="btn map-nav-home" id="btnPanCenter" aria-label="Reset view" title="Whole island">&#8982;</button>
-          <button type="button" class="btn" id="btnPanE" aria-label="Move right" title="Move right (D)">&#9654;</button>
-          <span></span>
-          <button type="button" class="btn" id="btnPanS" aria-label="Move down" title="Move down (S / Down)">&#9660;</button>
-          <span></span>
+      <div class="map-nav" id="mapNav" role="group" aria-label="Zoom, turn, and pan controls">
+        <button type="button" class="map-nav-toggle" id="btnNavToggle" aria-expanded="true" aria-controls="mapNavBody" aria-label="Collapse navigation">
+          <span>Nav</span><i aria-hidden="true">&#9662;</i>
+        </button>
+        <div class="map-nav-body" id="mapNavBody">
+          <div class="map-nav-row">
+            <button type="button" class="btn" id="btnZoomIn" aria-label="Zoom in" title="Zoom in (+)">+</button>
+            <button type="button" class="btn" id="btnZoomOut" aria-label="Zoom out" title="Zoom out (-)">&minus;</button>
+            <button type="button" class="btn" id="btnTurnL" aria-label="Turn left" title="Turn left (Q)">&#8634;</button>
+            <button type="button" class="btn" id="btnTurnR" aria-label="Turn right" title="Turn right (E)">&#8635;</button>
+          </div>
+          <div class="map-dpad" role="group" aria-label="Move around map">
+            <span></span>
+            <button type="button" class="btn" id="btnPanN" aria-label="Move up" title="Move up (W / Up)">&#9650;</button>
+            <span></span>
+            <button type="button" class="btn" id="btnPanW" aria-label="Move left" title="Move left (A)">&#9664;</button>
+            <button type="button" class="btn map-nav-home" id="btnPanCenter" aria-label="Reset view" title="Whole island">&#8982;</button>
+            <button type="button" class="btn" id="btnPanE" aria-label="Move right" title="Move right (D)">&#9654;</button>
+            <span></span>
+            <button type="button" class="btn" id="btnPanS" aria-label="Move down" title="Move down (S / Down)">&#9660;</button>
+            <span></span>
+          </div>
         </div>
       </div>
       <div class="map-toolbar" role="group" aria-label="Map controls">
@@ -4618,6 +4635,12 @@ function bindHoldZoom(id, dir, tapFactor) {
   for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(ev, stop);
   el.addEventListener('click', () => { if (!held) stepZoom(tapFactor); held = false; });
 }
+const mapNav = $('mapNav'), btnNavToggle = $('btnNavToggle');
+btnNavToggle.addEventListener('click', () => {
+  const collapsed = mapNav.classList.toggle('collapsed');
+  btnNavToggle.setAttribute('aria-expanded', String(!collapsed));
+  btnNavToggle.setAttribute('aria-label', collapsed ? 'Expand navigation' : 'Collapse navigation');
+});
 bindHoldZoom('btnZoomIn', -1, 0.72);
 bindHoldZoom('btnZoomOut', 1, 1.38);
 $('btnTurnL').addEventListener('click', () => { fly.goal = null; iso.stepTurn(-1); });

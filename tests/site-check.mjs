@@ -240,6 +240,24 @@ const panCheck = await desktop.evaluate(() => document.querySelector('.pin[data-
 if (panCheck === zoomCheck.pinBefore) fail('desktop light: D-pad Pan right did not move the map');
 await desktop.click('#btnPanCenter');
 await desktop.waitForTimeout(700);
+await desktop.click('#btnNavToggle');
+const navColD = await desktop.evaluate(() => ({
+  collapsed: document.getElementById('mapNav')?.classList.contains('collapsed'),
+  expandedAttr: document.getElementById('btnNavToggle')?.getAttribute('aria-expanded'),
+  bodyH: document.getElementById('mapNavBody')?.getBoundingClientRect().height || 0
+}));
+if (!navColD.collapsed || navColD.expandedAttr !== 'false' || navColD.bodyH > 0) {
+  fail(`desktop light: #btnNavToggle did not collapse .map-nav (${JSON.stringify(navColD)})`);
+}
+await desktop.click('#btnNavToggle');
+const navExpD = await desktop.evaluate(() => ({
+  collapsed: document.getElementById('mapNav')?.classList.contains('collapsed'),
+  expandedAttr: document.getElementById('btnNavToggle')?.getAttribute('aria-expanded'),
+  bodyH: document.getElementById('mapNavBody')?.getBoundingClientRect().height || 0
+}));
+if (navExpD.collapsed || navExpD.expandedAttr !== 'true' || navExpD.bodyH === 0) {
+  fail(`desktop light: #btnNavToggle did not re-expand .map-nav (${JSON.stringify(navExpD)})`);
+}
 
 console.log('  checking triggers (keys, bar, pins)...');
 await placesByTrigger(desktop, 'desktop light keys', byKey, outDir);
@@ -380,6 +398,13 @@ if (!mobileNavCheck.btns) fail('mobile light: one or more .map-nav controls are 
 if (mobileNavCheck.navBottom > mobileNavCheck.panelTop) {
   fail(`mobile light: .map-nav bottom (${mobileNavCheck.navBottom}) overlaps expanded panel top (${mobileNavCheck.panelTop})`);
 }
+await mobile.click('#btnNavToggle');
+const navColM = await mobile.evaluate(() => ({
+  collapsed: document.getElementById('mapNav')?.classList.contains('collapsed'),
+  bodyH: document.getElementById('mapNavBody')?.getBoundingClientRect().height || 0
+}));
+if (!navColM.collapsed || navColM.bodyH > 0) fail(`mobile light: #btnNavToggle did not collapse .map-nav (${JSON.stringify(navColM)})`);
+await mobile.click('#btnNavToggle');
 await mobile.screenshot({ path: join(outDir, 'place-stupa-mobile-expanded.png'), timeout: 120000 });
 await mobile.click('#panelToggle');
 await mobile.waitForTimeout(200);

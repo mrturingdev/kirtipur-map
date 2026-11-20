@@ -487,6 +487,12 @@ function bindHoldZoom(id, dir, tapFactor) {
   for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(ev, stop);
   el.addEventListener('click', () => { if (!held) stepZoom(tapFactor); held = false; });
 }
+const mapNav = $('mapNav'), btnNavToggle = $('btnNavToggle');
+btnNavToggle.addEventListener('click', () => {
+  const collapsed = mapNav.classList.toggle('collapsed');
+  btnNavToggle.setAttribute('aria-expanded', String(!collapsed));
+  btnNavToggle.setAttribute('aria-label', collapsed ? 'Expand navigation' : 'Collapse navigation');
+});
 bindHoldZoom('btnZoomIn', -1, 0.72);
 bindHoldZoom('btnZoomOut', 1, 1.38);
 $('btnTurnL').addEventListener('click', () => { fly.goal = null; iso.stepTurn(-1); });
